@@ -8,6 +8,8 @@ ___|  0  |  1  |  12 |  18 |  19 |  13 |            ___|  0  |  1  |  12 |  18 |
  7 |_____|_____|_____|_CTL_|_BSP_|_DEL_|             7 |_CTL_|_ENT_|_SPC_|_FUN_|_____|_____|
 
 */
+use esp_idf_hal::gpio::*;
+use esp_idf_hal::peripherals::Peripherals;
 use std::collections::HashMap;
 
 #[derive(Clone, Default, Debug)]
@@ -57,5 +59,46 @@ impl KeyboardLeftSide {
         self.key.insert((7, 18), "CTL"); /* CTL */
         self.key.insert((7, 19), "BSP"); /* BSP */
         self.key.insert((7, 13), "DEL"); /* DEL */
+    }
+}
+
+pub enum RowPinHigh {
+    Row0,
+    Row1,
+    Row2,
+    Row3,
+    Row4,
+}
+
+pub enum ColPinHigh {
+    Col0,
+    Col1,
+    Col2,
+    Col3,
+    Col4,
+    Col5,
+}
+
+impl RowPinHigh {
+    fn is_high(&self) -> bool {
+        let peripherals = Peripherals::take().expect("msg");
+
+        match self {
+            RowPinHigh::Row0 => PinDriver::input(peripherals.pins.gpio2)
+                .expect("msg")
+                .is_high(),
+            RowPinHigh::Row1 => PinDriver::input(peripherals.pins.gpio3)
+                .expect("msg")
+                .is_high(),
+            RowPinHigh::Row2 => PinDriver::input(peripherals.pins.gpio10)
+                .expect("msg")
+                .is_high(),
+            RowPinHigh::Row3 => PinDriver::input(peripherals.pins.gpio6)
+                .expect("msg")
+                .is_high(),
+            RowPinHigh::Row4 => PinDriver::input(peripherals.pins.gpio7)
+                .expect("msg")
+                .is_high(),
+        }
     }
 }

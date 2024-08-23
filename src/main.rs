@@ -3,7 +3,7 @@ to flash:
 espflash flash ../target/riscv32imc-esp-espidf/debug/esp32-rust-split-keyboard --monitor
 */
 use chrono::Utc;
-use esp32_rust_split_keyboard::KeyboardLeftSide;
+use esp32_rust_split_keyboard::{KeyboardLeftSide, RowPinHigh};
 use esp_idf_hal::delay::FreeRtos;
 use esp_idf_hal::gpio::*;
 use esp_idf_hal::peripherals::Peripherals;
@@ -37,6 +37,14 @@ fn main() {
     log::info!("Hello, world!");
 
     let peripherals = Peripherals::take().expect("msg");
+
+    // let rows = vec![
+    //     RowPinHigh::Row0,
+    //     RowPinHigh::Row1,
+    //     RowPinHigh::Row2,
+    //     RowPinHigh::Row3,
+    //     RowPinHigh::Row4,
+    // ];
 
     let row_0: PinDriver<Gpio2, Input> = PinDriver::input(peripherals.pins.gpio2).expect("msg");
     let row_1: PinDriver<Gpio3, Input> = PinDriver::input(peripherals.pins.gpio3).expect("msg");
@@ -72,80 +80,198 @@ fn main() {
 
     keyboard.initialize_hashmap();
 
-    let mut key_pressed = (-1, -1);
+    let mut key_1_pressed: Option<(i32, i32)> = None;
+    let mut key_2_pressed: Option<(i32, i32)> = None;
+    let mut key_3_pressed: Option<(i32, i32)> = None;
 
     loop {
         let start_timestamp = Utc::now().timestamp_millis();
 
-        for row in &row_vec {
-            match row {
-                Rows::Row0(key) => {
-                    if key.is_high() {
-                        key_pressed.0 = 2;
+        for _i in 0..3 {
+            for row in &row_vec {
+                match row {
+                    Rows::Row0(key) => {
+                        if key.is_high() {
+                            if key_1_pressed.is_none() {
+                                key_1_pressed.unwrap().0 = 2;
+                            } else if key_2_pressed.is_none() && key_1_pressed.unwrap().0 != 2 {
+                                key_2_pressed.unwrap().0 = 2;
+                            } else if key_3_pressed.is_none()
+                                && key_1_pressed.unwrap().0 != 2
+                                && key_2_pressed.unwrap().0 != 2
+                            {
+                                key_3_pressed.unwrap().0 = 2;
+                            }
+                        }
                     }
-                }
-                Rows::Row1(key) => {
-                    if key.is_high() {
-                        key_pressed.0 = 3;
+                    Rows::Row1(key) => {
+                        if key.is_high() {
+                            if key_1_pressed.is_none() {
+                                key_1_pressed.unwrap().0 = 3;
+                            } else if key_2_pressed.is_none() && key_1_pressed.unwrap().0 != 3 {
+                                key_2_pressed.unwrap().0 = 3;
+                            } else if key_3_pressed.is_none()
+                                && key_1_pressed.unwrap().0 != 3
+                                && key_2_pressed.unwrap().0 != 3
+                            {
+                                key_3_pressed.unwrap().0 = 3;
+                            }
+                        }
                     }
-                }
-                Rows::Row2(key) => {
-                    if key.is_high() {
-                        key_pressed.0 = 10;
+                    Rows::Row2(key) => {
+                        if key.is_high() {
+                            if key_1_pressed.is_none() {
+                                key_1_pressed.unwrap().0 = 10;
+                            } else if key_2_pressed.is_none() && key_1_pressed.unwrap().0 != 10 {
+                                key_2_pressed.unwrap().0 = 10;
+                            } else if key_3_pressed.is_none()
+                                && key_1_pressed.unwrap().0 != 10
+                                && key_2_pressed.unwrap().0 != 10
+                            {
+                                key_3_pressed.unwrap().0 = 10;
+                            }
+                        }
                     }
-                }
-                Rows::Row3(key) => {
-                    if key.is_high() {
-                        key_pressed.0 = 6;
+                    Rows::Row3(key) => {
+                        if key.is_high() {
+                            if key_1_pressed.is_none() {
+                                key_1_pressed.unwrap().0 = 6;
+                            } else if key_2_pressed.is_none() && key_1_pressed.unwrap().0 != 6 {
+                                key_2_pressed.unwrap().0 = 6;
+                            } else if key_3_pressed.is_none()
+                                && key_1_pressed.unwrap().0 != 6
+                                && key_2_pressed.unwrap().0 != 6
+                            {
+                                key_3_pressed.unwrap().0 = 6;
+                            }
+                        }
                     }
-                }
-                Rows::Row4(key) => {
-                    if key.is_high() {
-                        key_pressed.0 = 7;
+                    Rows::Row4(key) => {
+                        if key.is_high() {
+                            if key_1_pressed.is_none() {
+                                key_1_pressed.unwrap().0 = 7;
+                            } else if key_2_pressed.is_none() && key_1_pressed.unwrap().0 != 7 {
+                                key_2_pressed.unwrap().0 = 7;
+                            } else if key_3_pressed.is_none()
+                                && key_1_pressed.unwrap().0 != 7
+                                && key_2_pressed.unwrap().0 != 7
+                            {
+                                key_3_pressed.unwrap().0 = 7;
+                            }
+                        }
                     }
                 }
             }
-        }
 
-        for col in &col_vec {
-            match col {
-                Cols::Col0(key) => {
-                    if key.is_high() {
-                        key_pressed.1 = 0;
+            for col in &col_vec {
+                match col {
+                    Cols::Col0(key) => {
+                        if key.is_high() {
+                            if key_1_pressed.is_none() {
+                                key_1_pressed.unwrap().1 = 0;
+                            } else if key_2_pressed.is_none() && key_1_pressed.unwrap().1 != 0 {
+                                key_2_pressed.unwrap().1 = 0;
+                            } else if key_3_pressed.is_none()
+                                && key_1_pressed.unwrap().1 != 0
+                                && key_2_pressed.unwrap().1 != 0
+                            {
+                                key_3_pressed.unwrap().1 = 0;
+                            }
+                        }
                     }
-                }
-                Cols::Col1(key) => {
-                    if key.is_high() {
-                        key_pressed.1 = 1;
+                    Cols::Col1(key) => {
+                        if key.is_high() {
+                            if key_1_pressed.is_none() {
+                                key_1_pressed.unwrap().1 = 1;
+                            } else if key_2_pressed.is_none() && key_1_pressed.unwrap().1 != 1 {
+                                key_2_pressed.unwrap().1 = 1;
+                            } else if key_3_pressed.is_none()
+                                && key_1_pressed.unwrap().1 != 1
+                                && key_2_pressed.unwrap().1 != 1
+                            {
+                                key_3_pressed.unwrap().1 = 1;
+                            }
+                        }
                     }
-                }
-                Cols::Col2(key) => {
-                    if key.is_high() {
-                        key_pressed.1 = 12;
+                    Cols::Col2(key) => {
+                        if key.is_high() {
+                            if key_1_pressed.is_none() {
+                                key_1_pressed.unwrap().1 = 12;
+                            } else if key_2_pressed.is_none() && key_1_pressed.unwrap().1 != 12 {
+                                key_2_pressed.unwrap().1 = 12;
+                            } else if key_3_pressed.is_none()
+                                && key_1_pressed.unwrap().1 != 12
+                                && key_2_pressed.unwrap().1 != 12
+                            {
+                                key_3_pressed.unwrap().1 = 12;
+                            }
+                        }
                     }
-                }
-                Cols::Col3(key) => {
-                    if key.is_high() {
-                        key_pressed.1 = 18;
+                    Cols::Col3(key) => {
+                        if key.is_high() {
+                            if key_1_pressed.is_none() {
+                                key_1_pressed.unwrap().1 = 18;
+                            } else if key_2_pressed.is_none() && key_1_pressed.unwrap().1 != 18 {
+                                key_2_pressed.unwrap().1 = 18;
+                            } else if key_3_pressed.is_none()
+                                && key_1_pressed.unwrap().1 != 18
+                                && key_2_pressed.unwrap().1 != 18
+                            {
+                                key_3_pressed.unwrap().1 = 18;
+                            }
+                        }
                     }
-                }
-                Cols::Col4(key) => {
-                    if key.is_high() {
-                        key_pressed.1 = 19;
+                    Cols::Col4(key) => {
+                        if key.is_high() {
+                            if key_1_pressed.is_none() {
+                                key_1_pressed.unwrap().1 = 19;
+                            } else if key_2_pressed.is_none() && key_1_pressed.unwrap().1 != 19 {
+                                key_2_pressed.unwrap().1 = 19;
+                            } else if key_3_pressed.is_none()
+                                && key_1_pressed.unwrap().1 != 19
+                                && key_2_pressed.unwrap().1 != 19
+                            {
+                                key_3_pressed.unwrap().1 = 19;
+                            }
+                        }
                     }
-                }
-                Cols::Col5(key) => {
-                    if key.is_high() {
-                        key_pressed.1 = 13;
+                    Cols::Col5(key) => {
+                        if key.is_high() {
+                            if key_1_pressed.is_none() {
+                                key_1_pressed.unwrap().1 = 13;
+                            } else if key_2_pressed.is_none() && key_1_pressed.unwrap().1 != 13 {
+                                key_2_pressed.unwrap().1 = 13;
+                            } else if key_3_pressed.is_none()
+                                && key_1_pressed.unwrap().1 != 13
+                                && key_2_pressed.unwrap().1 != 13
+                            {
+                                key_3_pressed.unwrap().1 = 13;
+                            }
+                        }
                     }
                 }
             }
-        }
 
-        if let Some(key_valid) = keyboard.key.get(&key_pressed) {
-            log::info!("Key pressed: {:?}", *key_valid);
+            if let Some(key_1_valid) = keyboard.key.get(&key_1_pressed.unwrap()) {
+                let mut keys_pressed: (&str, &str, &str) =
+                    ("not_pressed", "not_pressed", "not_pressed");
 
-            key_pressed = (-1, -1);
+                keys_pressed.0 = *key_1_valid;
+
+                if let Some(key_2_valid) = keyboard.key.get(&key_2_pressed.unwrap()) {
+                    keys_pressed.1 = *key_2_valid;
+
+                    if let Some(key_3_valid) = keyboard.key.get(&key_3_pressed.unwrap()) {
+                        keys_pressed.2 = *key_3_valid;
+                    }
+                }
+
+                log::info!("Keys pressed: {:?}", keys_pressed);
+
+                key_1_pressed = None;
+                key_2_pressed = None;
+                key_3_pressed = None;
+            }
         }
 
         let end_timestamp = Utc::now().timestamp_millis();
