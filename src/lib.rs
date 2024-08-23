@@ -62,7 +62,28 @@ impl KeyboardLeftSide {
     }
 }
 
-pub enum RowPinHigh {
+#[derive(Clone, Copy, Debug)]
+enum Pins {
+    Gpio0 = 0,
+    Gpio1 = 1,
+    Gpio2 = 2,
+    Gpio3 = 3,
+    Gpio6 = 6,
+    Gpio7 = 7,
+    Gpio10 = 10,
+    Gpio12 = 12,
+    Gpio13 = 13,
+    Gpio18 = 18,
+    Gpio19 = 19,
+}
+
+impl Pins {
+    pub fn as_i32(&self) -> i32 {
+        self.clone() as i32
+    }
+}
+
+pub enum RowPins {
     Row0,
     Row1,
     Row2,
@@ -70,7 +91,46 @@ pub enum RowPinHigh {
     Row4,
 }
 
-pub enum ColPinHigh {
+impl RowPins {
+    pub fn is_high(&self) -> (bool, i32) {
+        let peripherals = Peripherals::take().expect("msg");
+
+        match self {
+            RowPins::Row0 => (
+                PinDriver::input(peripherals.pins.gpio2)
+                    .expect("msg")
+                    .is_high(),
+                Pins::Gpio2.as_i32(),
+            ),
+            RowPins::Row1 => (
+                PinDriver::input(peripherals.pins.gpio3)
+                    .expect("msg")
+                    .is_high(),
+                Pins::Gpio3.as_i32(),
+            ),
+            RowPins::Row2 => (
+                PinDriver::input(peripherals.pins.gpio10)
+                    .expect("msg")
+                    .is_high(),
+                Pins::Gpio10.as_i32(),
+            ),
+            RowPins::Row3 => (
+                PinDriver::input(peripherals.pins.gpio6)
+                    .expect("msg")
+                    .is_high(),
+                Pins::Gpio6.as_i32(),
+            ),
+            RowPins::Row4 => (
+                PinDriver::input(peripherals.pins.gpio7)
+                    .expect("msg")
+                    .is_high(),
+                Pins::Gpio7.as_i32(),
+            ),
+        }
+    }
+}
+
+pub enum ColPins {
     Col0,
     Col1,
     Col2,
@@ -79,26 +139,47 @@ pub enum ColPinHigh {
     Col5,
 }
 
-impl RowPinHigh {
-    fn is_high(&self) -> bool {
+impl ColPins {
+    pub fn is_high(&self) -> (bool, i32) {
         let peripherals = Peripherals::take().expect("msg");
 
         match self {
-            RowPinHigh::Row0 => PinDriver::input(peripherals.pins.gpio2)
-                .expect("msg")
-                .is_high(),
-            RowPinHigh::Row1 => PinDriver::input(peripherals.pins.gpio3)
-                .expect("msg")
-                .is_high(),
-            RowPinHigh::Row2 => PinDriver::input(peripherals.pins.gpio10)
-                .expect("msg")
-                .is_high(),
-            RowPinHigh::Row3 => PinDriver::input(peripherals.pins.gpio6)
-                .expect("msg")
-                .is_high(),
-            RowPinHigh::Row4 => PinDriver::input(peripherals.pins.gpio7)
-                .expect("msg")
-                .is_high(),
+            ColPins::Col0 => (
+                PinDriver::input(peripherals.pins.gpio0)
+                    .expect("msg")
+                    .is_high(),
+                Pins::Gpio0.as_i32(),
+            ),
+            ColPins::Col1 => (
+                PinDriver::input(peripherals.pins.gpio1)
+                    .expect("msg")
+                    .is_high(),
+                Pins::Gpio1.as_i32(),
+            ),
+            ColPins::Col2 => (
+                PinDriver::input(peripherals.pins.gpio12)
+                    .expect("msg")
+                    .is_high(),
+                Pins::Gpio12.as_i32(),
+            ),
+            ColPins::Col3 => (
+                PinDriver::input(peripherals.pins.gpio18)
+                    .expect("msg")
+                    .is_high(),
+                Pins::Gpio18.as_i32(),
+            ),
+            ColPins::Col4 => (
+                PinDriver::input(peripherals.pins.gpio19)
+                    .expect("msg")
+                    .is_high(),
+                Pins::Gpio19.as_i32(),
+            ),
+            ColPins::Col5 => (
+                PinDriver::input(peripherals.pins.gpio13)
+                    .expect("msg")
+                    .is_high(),
+                Pins::Gpio13.as_i32(),
+            ),
         }
     }
 }
