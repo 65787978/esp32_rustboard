@@ -2,7 +2,6 @@
 to flash:
 espflash flash ../target/riscv32imc-esp-espidf/debug/esp32-rust-split-keyboard --monitor
 */
-use crate::ble_keyboard::*;
 use chrono::Utc;
 use esp32_rust_split_keyboard::{ColPins, KeyboardLeftSide, RowPins};
 use esp_idf_hal::delay::FreeRtos;
@@ -10,8 +9,6 @@ use esp_idf_hal::delay::FreeRtos;
 // use esp_idf_hal::peripherals::Peripherals;
 use esp_idf_svc::sys::link_patches;
 use std::vec;
-
-mod ble_keyboard;
 
 // enum Rows<'a> {
 //     Row0(PinDriver<'a, Gpio2, Input>),
@@ -56,16 +53,8 @@ fn main() {
         ColPins::Col5,
     ];
 
-    /* initialize keyboard */
-    let mut keyboard = Keyboard::new()?;
-
-    if keyboard.connected() {
-        ::log::info!("Sending 'Hello world'...");
-        keyboard.write("Hello world\n");
-    }
-
-    let mut keyboard_left_side = KeyboardLeftSide::new();
-    keyboard_left_side.initialize_hashmap();
+    let mut keyboard = KeyboardLeftSide::new();
+    keyboard.initialize_hashmap();
 
     let mut key_1_pressed: Option<(i32, i32)> = None;
     let mut key_2_pressed: Option<(i32, i32)> = None;
@@ -110,16 +99,16 @@ fn main() {
             }
         }
 
-        if let Some(key_1_valid) = keyboard_left_side.key.get(&key_1_pressed.unwrap()) {
+        if let Some(key_1_valid) = keyboard.key.get(&key_1_pressed.unwrap()) {
             let mut keys_pressed: (&str, &str, &str) =
                 ("not_pressed", "not_pressed", "not_pressed");
 
             keys_pressed.0 = *key_1_valid;
 
-            if let Some(key_2_valid) = keyboard_left_side.key.get(&key_2_pressed.unwrap()) {
+            if let Some(key_2_valid) = keyboard.key.get(&key_2_pressed.unwrap()) {
                 keys_pressed.1 = *key_2_valid;
 
-                if let Some(key_3_valid) = keyboard_left_side.key.get(&key_3_pressed.unwrap()) {
+                if let Some(key_3_valid) = keyboard.key.get(&key_3_pressed.unwrap()) {
                     keys_pressed.2 = *key_3_valid;
                 }
             }
