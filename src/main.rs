@@ -95,8 +95,9 @@ fn main() -> anyhow::Result<()> {
                     if let Some(valid_key) = keyboard_left.base_layer.get(&pins_active) {
                         /* If the previos key is same as the active key */
 
-                        log::info!("{:?}", *valid_key);
-                        keyboard.press(*valid_key as u8);
+                        log::info!("Valid Key {:?}", *valid_key);
+
+                        keyboard.press(*valid_key);
                         keyboard.release();
                     }
                 }
