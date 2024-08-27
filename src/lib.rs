@@ -39,6 +39,7 @@ use std::collections::HashMap;
 pub const DELAY_DEFAULT: u32 = 20;
 pub const DELAY_SAME_KEY: u32 = 60;
 pub const PIN_INACTIVE: i32 = -1;
+pub const ROW_INIT: u32 = 0;
 
 pub mod ble_keyboard;
 pub mod enums;
@@ -68,6 +69,9 @@ pub struct KeyboardSide<'a> {
     pub base_layer: HashMap<(i32, i32), u8>,
     pub shift_layer: HashMap<(i32, i32), u8>,
     pub upper_layer: HashMap<(i32, i32), u8>,
+    pub row_active: u32,
+    pub pins_active: (i32, i32),
+    pub layer: Layer,
     pub key_matrix: KeyMatrix<'a>,
 }
 
@@ -79,6 +83,9 @@ impl KeyboardSide<'_> {
             base_layer: HashMap::new(),
             shift_layer: HashMap::new(),
             upper_layer: HashMap::new(),
+            row_active: ROW_INIT,
+            pins_active: (PIN_INACTIVE, PIN_INACTIVE),
+            layer: Layer::Base,
             key_matrix: KeyMatrix {
                 rows: Rows {
                     row_0: PinDriver::output(peripherals.pins.gpio0).unwrap(),
@@ -114,25 +121,25 @@ impl KeyboardSide<'_> {
         self.base_layer.insert((0, 4), HidMapings::Num5 as u8); // 5
 
         self.base_layer.insert((1, 2), HidMapings::Tab as u8); // TAB
-        self.base_layer.insert((1, 3), HidMapings::LowerQ as u8); // q
-        self.base_layer.insert((1, 10), HidMapings::LowerW as u8); // w
-        self.base_layer.insert((1, 6), HidMapings::LowerE as u8); // e
-        self.base_layer.insert((1, 7), HidMapings::LowerR as u8); // r
-        self.base_layer.insert((1, 4), HidMapings::LowerT as u8); // t
+        self.base_layer.insert((1, 3), HidMapings::Q as u8); // q
+        self.base_layer.insert((1, 10), HidMapings::W as u8); // w
+        self.base_layer.insert((1, 6), HidMapings::E as u8); // e
+        self.base_layer.insert((1, 7), HidMapings::R as u8); // r
+        self.base_layer.insert((1, 4), HidMapings::T as u8); // t
 
         self.base_layer.insert((12, 2), HidMapings::Capslock as u8); // CAP
-        self.base_layer.insert((12, 3), HidMapings::LowerA as u8); // a
-        self.base_layer.insert((12, 10), HidMapings::LowerS as u8); // s
-        self.base_layer.insert((12, 6), HidMapings::LowerD as u8); // d
-        self.base_layer.insert((12, 7), HidMapings::LowerF as u8); // f
-        self.base_layer.insert((12, 4), HidMapings::LowerG as u8); // g
+        self.base_layer.insert((12, 3), HidMapings::A as u8); // a
+        self.base_layer.insert((12, 10), HidMapings::S as u8); // s
+        self.base_layer.insert((12, 6), HidMapings::D as u8); // d
+        self.base_layer.insert((12, 7), HidMapings::F as u8); // f
+        self.base_layer.insert((12, 4), HidMapings::G as u8); // g
 
         self.base_layer.insert((18, 2), HidMapings::No as u8); //
-        self.base_layer.insert((18, 3), HidMapings::LowerZ as u8); // z
-        self.base_layer.insert((18, 10), HidMapings::LowerX as u8); // x
-        self.base_layer.insert((18, 6), HidMapings::LowerC as u8); // c
-        self.base_layer.insert((18, 7), HidMapings::LowerV as u8); // v
-        self.base_layer.insert((18, 4), HidMapings::LowerB as u8); // b
+        self.base_layer.insert((18, 3), HidMapings::Z as u8); // z
+        self.base_layer.insert((18, 10), HidMapings::X as u8); // x
+        self.base_layer.insert((18, 6), HidMapings::C as u8); // c
+        self.base_layer.insert((18, 7), HidMapings::V as u8); // v
+        self.base_layer.insert((18, 4), HidMapings::B as u8); // b
 
         self.base_layer.insert((19, 2), HidMapings::No as u8); //
         self.base_layer.insert((19, 3), HidMapings::No as u8); //
@@ -216,54 +223,43 @@ impl KeyboardSide<'_> {
         self.upper_layer.insert((19, 4), HidMapings::Enter as u8); // ENTER
     }
 
-    pub fn check_pins(&mut self, pins_active: &mut (i32, i32)) {
+    pub fn check_pins(&mut self) {
         while self.key_matrix.cols.col_0.is_high() {
-            pins_active.1 = self.key_matrix.cols.col_0.pin();
-            // log::info!("{}, {}", pins_active.0, pins_active.1);
+            self.pins_active.1 = self.key_matrix.cols.col_0.pin();
             FreeRtos::delay_ms(DELAY_SAME_KEY);
             break;
         }
         while self.key_matrix.cols.col_1.is_high() {
-            pins_active.1 = self.key_matrix.cols.col_1.pin();
-            // log::info!("{}, {}", pins_active.0, pins_active.1);
+            self.pins_active.1 = self.key_matrix.cols.col_1.pin();
             FreeRtos::delay_ms(DELAY_SAME_KEY);
             break;
         }
         while self.key_matrix.cols.col_2.is_high() {
-            pins_active.1 = self.key_matrix.cols.col_2.pin();
-            // log::info!("{}, {}", pins_active.0, pins_active.1);
+            self.pins_active.1 = self.key_matrix.cols.col_2.pin();
             FreeRtos::delay_ms(DELAY_SAME_KEY);
             break;
         }
         while self.key_matrix.cols.col_3.is_high() {
-            pins_active.1 = self.key_matrix.cols.col_3.pin();
-            // log::info!("{}, {}", pins_active.0, pins_active.1);
+            self.pins_active.1 = self.key_matrix.cols.col_3.pin();
             FreeRtos::delay_ms(DELAY_SAME_KEY);
             break;
         }
         while self.key_matrix.cols.col_4.is_high() {
-            pins_active.1 = self.key_matrix.cols.col_4.pin();
-            // log::info!("{}, {}", pins_active.0, pins_active.1);
+            self.pins_active.1 = self.key_matrix.cols.col_4.pin();
             FreeRtos::delay_ms(DELAY_SAME_KEY);
             break;
         }
         while self.key_matrix.cols.col_5.is_high() {
-            pins_active.1 = self.key_matrix.cols.col_5.pin();
-            // log::info!("{}, {}", pins_active.0, pins_active.1);
+            self.pins_active.1 = self.key_matrix.cols.col_5.pin();
             FreeRtos::delay_ms(DELAY_SAME_KEY);
             break;
         }
     }
 
-    pub fn set_rows(
-        &mut self,
-        row_pin_active: &mut u32,
-        pins_active: &mut (i32, i32),
-        state: &'static str,
-    ) {
+    pub fn set_rows(&mut self, state: &'static str) {
         match state {
             "low" => {
-                match row_pin_active {
+                match self.row_active {
                     0 => self.key_matrix.rows.row_0.set_low().unwrap(),
                     1 => self.key_matrix.rows.row_1.set_low().unwrap(),
                     2 => self.key_matrix.rows.row_2.set_low().unwrap(),
@@ -272,155 +268,41 @@ impl KeyboardSide<'_> {
                     _ => {}
                 }
                 /* reset pins_active */
-                *pins_active = (PIN_INACTIVE, PIN_INACTIVE);
+                self.pins_active = (PIN_INACTIVE, PIN_INACTIVE);
             }
-            "high" => match row_pin_active {
+            "high" => match self.row_active {
                 0 => {
                     self.key_matrix.rows.row_0.set_high().unwrap();
-                    pins_active.0 = self.key_matrix.rows.row_0.pin()
+                    self.pins_active.0 = self.key_matrix.rows.row_0.pin()
                 }
                 1 => {
                     self.key_matrix.rows.row_1.set_high().unwrap();
-                    pins_active.0 = self.key_matrix.rows.row_1.pin()
+                    self.pins_active.0 = self.key_matrix.rows.row_1.pin()
                 }
                 2 => {
                     self.key_matrix.rows.row_2.set_high().unwrap();
-                    pins_active.0 = self.key_matrix.rows.row_2.pin()
+                    self.pins_active.0 = self.key_matrix.rows.row_2.pin()
                 }
                 3 => {
                     self.key_matrix.rows.row_3.set_high().unwrap();
-                    pins_active.0 = self.key_matrix.rows.row_3.pin()
+                    self.pins_active.0 = self.key_matrix.rows.row_3.pin()
                 }
                 4 => {
                     self.key_matrix.rows.row_4.set_high().unwrap();
-                    pins_active.0 = self.key_matrix.rows.row_4.pin()
+                    self.pins_active.0 = self.key_matrix.rows.row_4.pin()
                 }
                 _ => {}
             },
             _ => {}
         }
-        *row_pin_active = (*row_pin_active + 1) % 5;
+        self.row_active = (self.row_active + 1) % 5;
+    }
+
+    pub fn provide_value(&mut self) -> Option<&u8> {
+        match self.layer {
+            Layer::Base => self.base_layer.get(&self.pins_active),
+            Layer::Shift => self.shift_layer.get(&self.pins_active),
+            Layer::Upper => self.upper_layer.get(&self.pins_active),
+        }
     }
 }
-
-// #[derive(Clone, Copy, Debug)]
-// enum Pins {
-//     Gpio0 = 0,
-//     Gpio1 = 1,
-//     Gpio2 = 2,
-//     Gpio3 = 3,
-//     Gpio6 = 6,
-//     Gpio7 = 7,
-//     Gpio10 = 10,
-//     Gpio12 = 12,
-//     Gpio13 = 13,
-//     Gpio18 = 18,
-//     Gpio19 = 19,
-// }
-
-// impl Pins {
-//     pub fn as_i32(&self) -> i32 {
-//         self.clone() as i32
-//     }
-// }
-
-// pub enum RowPins {
-//     Row0,
-//     Row1,
-//     Row2,
-//     Row3,
-//     Row4,
-// }
-
-// impl RowPins {
-//     pub fn is_high(&self) -> (bool, i32) {
-//         let peripherals = Peripherals::take().expect("msg");
-
-//         match self {
-//             RowPins::Row0 => (
-//                 PinDriver::input(peripherals.pins.gpio2)
-//                     .expect("msg")
-//                     .is_high(),
-//                 Pins::Gpio2.as_i32(),
-//             ),
-//             RowPins::Row1 => (
-//                 PinDriver::input(peripherals.pins.gpio3)
-//                     .expect("msg")
-//                     .is_high(),
-//                 Pins::Gpio3.as_i32(),
-//             ),
-//             RowPins::Row2 => (
-//                 PinDriver::input(peripherals.pins.gpio10)
-//                     .expect("msg")
-//                     .is_high(),
-//                 Pins::Gpio10.as_i32(),
-//             ),
-//             RowPins::Row3 => (
-//                 PinDriver::input(peripherals.pins.gpio6)
-//                     .expect("msg")
-//                     .is_high(),
-//                 Pins::Gpio6.as_i32(),
-//             ),
-//             RowPins::Row4 => (
-//                 PinDriver::input(peripherals.pins.gpio7)
-//                     .expect("msg")
-//                     .is_high(),
-//                 Pins::Gpio7.as_i32(),
-//             ),
-//         }
-//     }
-// }
-
-// pub enum ColPins {
-//     Col0,
-//     Col1,
-//     Col2,
-//     Col3,
-//     Col4,
-//     Col5,
-// }
-
-// impl ColPins {
-//     pub fn is_high(&self) -> (bool, i32) {
-//         let peripherals = Peripherals::take().expect("msg");
-
-//         match self {
-//             ColPins::Col0 => (
-//                 PinDriver::input(peripherals.pins.gpio0)
-//                     .expect("msg")
-//                     .is_high(),
-//                 Pins::Gpio0.as_i32(),
-//             ),
-//             ColPins::Col1 => (
-//                 PinDriver::input(peripherals.pins.gpio1)
-//                     .expect("msg")
-//                     .is_high(),
-//                 Pins::Gpio1.as_i32(),
-//             ),
-//             ColPins::Col2 => (
-//                 PinDriver::input(peripherals.pins.gpio12)
-//                     .expect("msg")
-//                     .is_high(),
-//                 Pins::Gpio12.as_i32(),
-//             ),
-//             ColPins::Col3 => (
-//                 PinDriver::input(peripherals.pins.gpio18)
-//                     .expect("msg")
-//                     .is_high(),
-//                 Pins::Gpio18.as_i32(),
-//             ),
-//             ColPins::Col4 => (
-//                 PinDriver::input(peripherals.pins.gpio19)
-//                     .expect("msg")
-//                     .is_high(),
-//                 Pins::Gpio19.as_i32(),
-//             ),
-//             ColPins::Col5 => (
-//                 PinDriver::input(peripherals.pins.gpio13)
-//                     .expect("msg")
-//                     .is_high(),
-//                 Pins::Gpio13.as_i32(),
-//             ),
-//         }
-//     }
-// }

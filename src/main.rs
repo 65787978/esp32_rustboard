@@ -36,20 +36,16 @@ fn main() -> anyhow::Result<()> {
     // let gpio7 = &mut PinDriver::input(peripherals.pins.gpio7)?;
     // let gpio4 = &mut PinDriver::input(peripherals.pins.gpio4)?;
 
-    let mut row_pin_active: u32 = 0;
+    // let mut row_pin_active: u32 = 0;
 
     let mut keyboard_left_side = KeyboardSide::new();
     keyboard_left_side.initialize_layers();
 
-    let mut pins_active = (PIN_INACTIVE, PIN_INACTIVE);
-
     let delay = DELAY_DEFAULT;
-
-    let mut layer = Layer::Base;
 
     loop {
         if keyboard.connected() {
-            keyboard_left_side.set_rows(&mut row_pin_active, &mut pins_active, "high");
+            keyboard_left_side.set_rows("high");
 
             /* Shift pressed */
             // if gpio7.is_high() && gpio19.is_set_high() {
@@ -64,43 +60,17 @@ fn main() -> anyhow::Result<()> {
             //     layer = Layer::Base;
             // }
 
-            keyboard_left_side.check_pins(&mut pins_active);
+            keyboard_left_side.check_pins();
             // check_pins(&mut pins_active, gpio2, gpio3, gpio10, gpio6, gpio7, gpio4);
 
-            match layer {
-                Layer::Base => {
-                    /* Check if the pins pressed have a valid combination in the hashmap */
-                    if let Some(valid_key) = keyboard_left_side.base_layer.get(&pins_active) {
-                        /* If the previos key is same as the active key */
-
-                        log::info!("{:?}", *valid_key);
-                        keyboard.press(*valid_key as u8);
-                        keyboard.release();
-                    }
-                }
-                Layer::Shift => {
-                    /* Check if the pins pressed have a valid combination in the hashmap */
-                    if let Some(valid_key) = keyboard_left_side.shift_layer.get(&pins_active) {
-                        /* If the previos key is same as the active key */
-
-                        log::info!("{:?}", *valid_key);
-                        keyboard.press(*valid_key as u8);
-                        keyboard.release();
-                    }
-                }
-                Layer::Upper => {
-                    /* Check if the pins pressed have a valid combination in the hashmap */
-                    if let Some(valid_key) = keyboard_left_side.upper_layer.get(&pins_active) {
-                        /* If the previos key is same as the active key */
-
-                        log::info!("{:?}", *valid_key);
-                        keyboard.press(*valid_key as u8);
-                        keyboard.release();
-                    }
-                }
+            /* Check if the pins pressed have a valid combination in the hashmap */
+            if let Some(valid_key) = keyboard_left_side.provide_value() {
+                log::info!("{:?}", *valid_key);
+                keyboard.press(*valid_key as u8);
+                keyboard.release();
             }
 
-            keyboard_left_side.set_rows(&mut row_pin_active, &mut pins_active, "low");
+            keyboard_left_side.set_rows("low");
 
             FreeRtos::delay_ms(delay);
         }
