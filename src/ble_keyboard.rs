@@ -75,7 +75,7 @@ const HID_REPORT_DISCRIPTOR: &[u8] = hid!(
     (END_COLLECTION), // END_COLLECTION
 );
 
-pub const SHIFT: u8 = 0x80;
+pub const SHIFT: u8 = 0x02;
 pub const ASCII_MAP: &[u8] = &[];
 
 #[repr(packed)]
@@ -151,12 +151,12 @@ impl Keyboard {
     }
 
     pub fn press(&mut self, char: u8) {
-        // let mut key = ASCII_MAP[char as usize];
-        // if (key & SHIFT) > 0 {
-        //     self.key_report.modifiers |= 0x02;
-        //     key &= !SHIFT;
-        // }
-        self.key_report.keys[0] = char;
+        let mut key = char;
+        if (key & SHIFT) > 0 {
+            self.key_report.modifiers |= 0x02;
+            key &= !SHIFT;
+        }
+        self.key_report.keys[0] = key;
         self.send_report(&self.key_report);
     }
 
