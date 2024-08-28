@@ -151,11 +151,11 @@ impl Keyboard {
     }
 
     pub fn press(&mut self, char: u8) {
-        let mut key = char;
-        if (key & SHIFT) > 0 {
-            self.key_report.modifiers |= 0x02;
-            key &= !SHIFT;
-        }
+        let key = char;
+        // if (key & SHIFT) > 0 {
+        //     self.key_report.modifiers |= 0x02;
+        //     key &= !SHIFT;
+        // }
         self.key_report.keys[0] = key;
         self.send_report(&self.key_report);
     }

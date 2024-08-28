@@ -40,6 +40,7 @@ pub const DELAY_DEFAULT: u32 = 20;
 pub const DELAY_SAME_KEY: u32 = 60;
 pub const PIN_INACTIVE: i32 = -1;
 pub const ROW_INIT: u32 = 0;
+pub const DEBOUNCE_DELAY: u32 = 10;
 
 pub mod ble_keyboard;
 pub mod enums;
@@ -224,52 +225,75 @@ impl KeyboardSide<'_> {
     }
 
     pub fn check_pins(&mut self) {
-        while self.key_matrix.cols.col_0.is_high() {
+        let mut button_state = false;
+
+        if self.key_matrix.cols.col_0.is_high() {
+            FreeRtos::delay_ms(DEBOUNCE_DELAY);
+            button_state = true;
+        }
+        /* check again if col is high */
+        if self.key_matrix.cols.col_0.is_high() && button_state {
             self.pins_active.1 = self.key_matrix.cols.col_0.pin();
-            FreeRtos::delay_ms(DELAY_SAME_KEY);
-            break;
         }
-        while self.key_matrix.cols.col_1.is_high() {
+
+        /*********************************************************/
+
+        if self.key_matrix.cols.col_1.is_high() != button_state {
+            FreeRtos::delay_ms(DEBOUNCE_DELAY);
+            button_state = true;
+        }
+        /* check again if col is high */
+        if self.key_matrix.cols.col_1.is_high() && button_state {
             self.pins_active.1 = self.key_matrix.cols.col_1.pin();
-            FreeRtos::delay_ms(DELAY_SAME_KEY);
-            break;
         }
-        while self.key_matrix.cols.col_2.is_high() {
+
+        /*********************************************************/
+
+        if self.key_matrix.cols.col_2.is_high() != button_state {
+            FreeRtos::delay_ms(DEBOUNCE_DELAY);
+            button_state = true;
+        }
+        /* check again if col is high */
+        if self.key_matrix.cols.col_2.is_high() && button_state {
             self.pins_active.1 = self.key_matrix.cols.col_2.pin();
-            FreeRtos::delay_ms(DELAY_SAME_KEY);
-            break;
         }
-        while self.key_matrix.cols.col_3.is_high() {
+
+        /*********************************************************/
+
+        if self.key_matrix.cols.col_3.is_high() != button_state {
+            FreeRtos::delay_ms(DEBOUNCE_DELAY);
+            button_state = true;
+        }
+        /* check again if col is high */
+        if self.key_matrix.cols.col_3.is_high() && button_state {
             self.pins_active.1 = self.key_matrix.cols.col_3.pin();
-            FreeRtos::delay_ms(DELAY_SAME_KEY);
-            break;
         }
-        while self.key_matrix.cols.col_4.is_high() {
+
+        /*********************************************************/
+
+        if self.key_matrix.cols.col_4.is_high() != button_state {
+            FreeRtos::delay_ms(DEBOUNCE_DELAY);
+            button_state = true;
+        }
+        /* check again if col is high */
+        if self.key_matrix.cols.col_4.is_high() && button_state {
             self.pins_active.1 = self.key_matrix.cols.col_4.pin();
-            FreeRtos::delay_ms(DELAY_SAME_KEY);
-            break;
         }
-        while self.key_matrix.cols.col_5.is_high() {
+
+        /*********************************************************/
+
+        if self.key_matrix.cols.col_5.is_high() != button_state {
+            FreeRtos::delay_ms(DEBOUNCE_DELAY);
+            button_state = true;
+        }
+        /* check again if col is high */
+        if self.key_matrix.cols.col_5.is_high() && button_state {
             self.pins_active.1 = self.key_matrix.cols.col_5.pin();
-            FreeRtos::delay_ms(DELAY_SAME_KEY);
-            break;
         }
     }
 
     pub fn set_rows(&mut self, state: &'static str) {
         match state {
-            "low" => {
-                match self.row_active {
-                    0 => self.key_matrix.rows.row_0.set_low().unwrap(),
-                    1 => self.key_matrix.rows.row_1.set_low().unwrap(),
-                    2 => self.key_matrix.rows.row_2.set_low().unwrap(),
-                    3 => self.key_matrix.rows.row_3.set_low().unwrap(),
-                    4 => self.key_matrix.rows.row_4.set_low().unwrap(),
-                    _ => {}
-                }
-                /* reset pins_active */
-                self.pins_active = (PIN_INACTIVE, PIN_INACTIVE);
-            }
             "high" => match self.row_active {
                 0 => {
                     self.key_matrix.rows.row_0.set_high().unwrap();
@@ -293,9 +317,23 @@ impl KeyboardSide<'_> {
                 }
                 _ => {}
             },
+            "low" => {
+                match self.row_active {
+                    0 => self.key_matrix.rows.row_0.set_low().unwrap(),
+                    1 => self.key_matrix.rows.row_1.set_low().unwrap(),
+                    2 => self.key_matrix.rows.row_2.set_low().unwrap(),
+                    3 => self.key_matrix.rows.row_3.set_low().unwrap(),
+                    4 => self.key_matrix.rows.row_4.set_low().unwrap(),
+                    _ => {}
+                }
+                /* reset pins_active */
+                self.pins_active = (PIN_INACTIVE, PIN_INACTIVE);
+                /* Increment the active row */
+                self.row_active = (self.row_active + 1) % 5;
+            }
+
             _ => {}
         }
-        self.row_active = (self.row_active + 1) % 5;
     }
 
     pub fn provide_value(&mut self) -> Option<&u8> {
