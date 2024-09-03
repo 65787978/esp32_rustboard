@@ -80,7 +80,7 @@ pub struct KeyboardSide<'a> {
     pub shift_layer: HashMap<(i32, i32), u8>,
     pub upper_layer: HashMap<(i32, i32), u8>,
     pub row_active: u32,
-    pub pins_active: [(i32, i32); 6],
+    pub pins_active_buffer: [(i32, i32); 6],
     pub pins_active_cnt: usize,
     pub layer: Layer,
     pub key_matrix: KeyMatrix<'a>,
@@ -123,7 +123,7 @@ impl KeyboardSide<'_> {
             shift_layer: HashMap::new(),
             upper_layer: HashMap::new(),
             row_active: ROW_INIT,
-            pins_active: [(PIN_INACTIVE, PIN_INACTIVE); 6],
+            pins_active_buffer: [(PIN_INACTIVE, PIN_INACTIVE); 6],
             pins_active_cnt: 0,
             layer: Layer::Base,
             key_matrix: KeyMatrix {
@@ -336,37 +336,37 @@ impl KeyboardSide<'_> {
     pub fn check_cols(&mut self) {
         if COL_0_FLAG.load(Ordering::Relaxed) {
             COL_0_FLAG.store(false, Ordering::Relaxed);
-            self.pins_active[self.pins_active_cnt].1 = self.key_matrix.cols.col_0.pin();
+            self.pins_active_buffer[self.pins_active_cnt].1 = self.key_matrix.cols.col_0.pin();
             self.pins_active_cnt += 1;
         }
 
         if COL_1_FLAG.load(Ordering::Relaxed) {
             COL_1_FLAG.store(false, Ordering::Relaxed);
-            self.pins_active[self.pins_active_cnt].1 = self.key_matrix.cols.col_1.pin();
+            self.pins_active_buffer[self.pins_active_cnt].1 = self.key_matrix.cols.col_1.pin();
             self.pins_active_cnt += 1;
         }
 
         if COL_2_FLAG.load(Ordering::Relaxed) {
             COL_2_FLAG.store(false, Ordering::Relaxed);
-            self.pins_active[self.pins_active_cnt].1 = self.key_matrix.cols.col_2.pin();
+            self.pins_active_buffer[self.pins_active_cnt].1 = self.key_matrix.cols.col_2.pin();
             self.pins_active_cnt += 1;
         }
 
         if COL_3_FLAG.load(Ordering::Relaxed) {
             COL_3_FLAG.store(false, Ordering::Relaxed);
-            self.pins_active[self.pins_active_cnt].1 = self.key_matrix.cols.col_3.pin();
+            self.pins_active_buffer[self.pins_active_cnt].1 = self.key_matrix.cols.col_3.pin();
             self.pins_active_cnt += 1;
         }
 
         if COL_4_FLAG.load(Ordering::Relaxed) {
             COL_4_FLAG.store(false, Ordering::Relaxed);
-            self.pins_active[self.pins_active_cnt].1 = self.key_matrix.cols.col_4.pin();
+            self.pins_active_buffer[self.pins_active_cnt].1 = self.key_matrix.cols.col_4.pin();
             self.pins_active_cnt += 1;
         }
 
         if COL_5_FLAG.load(Ordering::Relaxed) {
             COL_5_FLAG.store(false, Ordering::Relaxed);
-            self.pins_active[self.pins_active_cnt].1 = self.key_matrix.cols.col_5.pin();
+            self.pins_active_buffer[self.pins_active_cnt].1 = self.key_matrix.cols.col_5.pin();
             self.pins_active_cnt += 1;
         }
     }
@@ -376,23 +376,28 @@ impl KeyboardSide<'_> {
             "high" => match self.row_active {
                 0 => {
                     self.key_matrix.rows.row_0.set_high().unwrap();
-                    self.pins_active[self.pins_active_cnt].0 = self.key_matrix.rows.row_0.pin()
+                    self.pins_active_buffer[self.pins_active_cnt].0 =
+                        self.key_matrix.rows.row_0.pin()
                 }
                 1 => {
                     self.key_matrix.rows.row_1.set_high().unwrap();
-                    self.pins_active[self.pins_active_cnt].0 = self.key_matrix.rows.row_1.pin()
+                    self.pins_active_buffer[self.pins_active_cnt].0 =
+                        self.key_matrix.rows.row_1.pin()
                 }
                 2 => {
                     self.key_matrix.rows.row_2.set_high().unwrap();
-                    self.pins_active[self.pins_active_cnt].0 = self.key_matrix.rows.row_2.pin()
+                    self.pins_active_buffer[self.pins_active_cnt].0 =
+                        self.key_matrix.rows.row_2.pin()
                 }
                 3 => {
                     self.key_matrix.rows.row_3.set_high().unwrap();
-                    self.pins_active[self.pins_active_cnt].0 = self.key_matrix.rows.row_3.pin()
+                    self.pins_active_buffer[self.pins_active_cnt].0 =
+                        self.key_matrix.rows.row_3.pin()
                 }
                 4 => {
                     self.key_matrix.rows.row_4.set_high().unwrap();
-                    self.pins_active[self.pins_active_cnt].0 = self.key_matrix.rows.row_4.pin()
+                    self.pins_active_buffer[self.pins_active_cnt].0 =
+                        self.key_matrix.rows.row_4.pin()
                 }
                 _ => {}
             },

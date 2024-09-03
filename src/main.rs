@@ -31,7 +31,7 @@ fn main() -> anyhow::Result<()> {
 
             if report_delay == 0 {
                 /* Check if the pins pressed have a valid combination in the hashmap */
-                for pins in keyboard_left_side.pins_active.iter() {
+                for pins in keyboard_left_side.pins_active_buffer.iter() {
                     if let Some(valid_key) = keyboard_left_side.base_layer.get(pins) {
                         log::info!("Valid_Key = {:?}", *valid_key);
                         keyboard.press(*valid_key);
@@ -43,7 +43,7 @@ fn main() -> anyhow::Result<()> {
                 report_delay = REPORT_DELAY;
 
                 /* Reset active_pins */
-                for pins in keyboard_left_side.pins_active.iter_mut() {
+                for pins in keyboard_left_side.pins_active_buffer.iter_mut() {
                     *pins = (PIN_INACTIVE, PIN_INACTIVE);
                 }
                 keyboard_left_side.pins_active_cnt = 0;
