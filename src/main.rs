@@ -31,13 +31,22 @@ fn main() -> anyhow::Result<()> {
 
             if report_delay == 0 {
                 /* Check if the pins pressed have a valid combination in the hashmap */
-                if let Some(valid_key) = keyboard_left_side.provide_value() {
-                    log::info!("Valid_Key = {:?}", *valid_key);
-                    keyboard.press(*valid_key);
-                    keyboard.release();
+                for pins in keyboard_left_side.pins_active.iter() {
+                    if let Some(valid_key) = keyboard_left_side.base_layer.get(pins) {
+                        log::info!("Valid_Key = {:?}", *valid_key);
+                        keyboard.press(*valid_key);
+                        keyboard.release();
+                    }
                 }
 
+                /* Reset report_delay */
                 report_delay = REPORT_DELAY;
+
+                /* Reset active_pins */
+                for pins in keyboard_left_side.pins_active.iter_mut() {
+                    *pins = (PIN_INACTIVE, PIN_INACTIVE);
+                }
+                keyboard_left_side.pins_active_cnt = 0;
             }
 
             keyboard_left_side.set_rows("low");
