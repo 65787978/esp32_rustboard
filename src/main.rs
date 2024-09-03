@@ -21,23 +21,28 @@ fn main() -> anyhow::Result<()> {
     let mut keyboard_left_side = KeyboardSide::new();
     keyboard_left_side.initialize_layers();
 
+    let mut report_delay: u32 = REPORT_DELAY;
+
     loop {
         if keyboard.connected() {
             keyboard_left_side.set_rows("high");
 
-            keyboard_left_side.check_pins();
+            keyboard_left_side.check_cols();
 
-            /* Check if the pins pressed have a valid combination in the hashmap *///
-            if let Some(valid_key) = keyboard_left_side.provide_value() {
-                log::info!("Valid_Key = {:?}", *valid_key);
-                keyboard.press(*valid_key);
-                keyboard.release();
+            if report_delay == 0 {
+                /* Check if the pins pressed have a valid combination in the hashmap */
+                if let Some(valid_key) = keyboard_left_side.provide_value() {
+                    log::info!("Valid_Key = {:?}", *valid_key);
+                    keyboard.press(*valid_key);
+                    keyboard.release();
+                }
 
-                FreeRtos::delay_ms(DELAY_DEFAULT);
+                report_delay = REPORT_DELAY;
             }
 
             keyboard_left_side.set_rows("low");
 
+            report_delay -= 1;
             FreeRtos::delay_ms(1);
         }
     }
