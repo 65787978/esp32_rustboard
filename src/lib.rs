@@ -226,6 +226,14 @@ impl KeyboardSide<'_> {
     }
     */
 
+    // pub fn provide_value(&mut self) -> Option<&u8> {
+    //     match self.layer {
+    //         Layer::Base => self.base_layer.get(&self.pins_active),
+    //         Layer::Shift => self.shift_layer.get(&self.pins_active),
+    //         Layer::Upper => self.upper_layer.get(&self.pins_active),
+    //     }
+    // }
+
     pub fn check_cols(&mut self) {
         for cols in self.key_matrix.cols.iter_mut() {
             if cols.is_high() {
@@ -234,14 +242,6 @@ impl KeyboardSide<'_> {
             }
         }
     }
-
-    // pub fn provide_value(&mut self) -> Option<&u8> {
-    //     match self.layer {
-    //         Layer::Base => self.base_layer.get(&self.pins_active),
-    //         Layer::Shift => self.shift_layer.get(&self.pins_active),
-    //         Layer::Upper => self.upper_layer.get(&self.pins_active),
-    //     }
-    // }
 
     pub fn iter_rows_cols(&mut self) {
         for row in self.key_matrix.rows.iter_mut() {

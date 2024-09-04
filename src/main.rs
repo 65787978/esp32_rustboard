@@ -33,6 +33,7 @@ fn main() -> anyhow::Result<()> {
                     }
                 }
 
+                /* reset counters */
                 keyboard_left_side.reset();
             }
         }
