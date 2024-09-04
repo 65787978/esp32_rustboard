@@ -31,19 +31,12 @@ PINS|  2  |  3  |  10 |  6  |  7  |  4  |           PINS|  2  |  3  |  10 |  6  
 
 */
 use crate::enums::*;
+use esp_idf_hal::delay::FreeRtos;
 use esp_idf_svc::hal::gpio::*;
 use esp_idf_svc::hal::peripherals::Peripherals;
 use std::collections::HashMap;
-use std::sync::atomic::{AtomicBool, Ordering};
 
-static COL_0_FLAG: AtomicBool = AtomicBool::new(false);
-static COL_1_FLAG: AtomicBool = AtomicBool::new(false);
-static COL_2_FLAG: AtomicBool = AtomicBool::new(false);
-static COL_3_FLAG: AtomicBool = AtomicBool::new(false);
-static COL_4_FLAG: AtomicBool = AtomicBool::new(false);
-static COL_5_FLAG: AtomicBool = AtomicBool::new(false);
-
-pub static REPORT_DELAY: u32 = 20;
+pub static REPORT_DELAY: u32 = 5 * 4;
 
 pub const DELAY_DEFAULT: u32 = 20;
 pub const DELAY_SAME_KEY: u32 = 60;
@@ -54,32 +47,15 @@ pub const DEBOUNCE_DELAY: u32 = 10;
 pub mod ble_keyboard;
 pub mod enums;
 
-pub struct Rows<'a> {
-    pub row_0: PinDriver<'a, Gpio0, Output>,
-    pub row_1: PinDriver<'a, Gpio1, Output>,
-    pub row_2: PinDriver<'a, Gpio12, Output>,
-    pub row_3: PinDriver<'a, Gpio18, Output>,
-    pub row_4: PinDriver<'a, Gpio19, Output>,
-}
-
-pub struct Cols<'a> {
-    pub col_0: PinDriver<'a, Gpio2, Input>,
-    pub col_1: PinDriver<'a, Gpio3, Input>,
-    pub col_2: PinDriver<'a, Gpio10, Input>,
-    pub col_3: PinDriver<'a, Gpio6, Input>,
-    pub col_4: PinDriver<'a, Gpio7, Input>,
-    pub col_5: PinDriver<'a, Gpio4, Input>,
-}
-
 pub struct KeyMatrix<'a> {
-    pub rows: Rows<'a>,
-    pub cols: Cols<'a>,
+    pub rows: [PinDriver<'a, AnyOutputPin, Output>; 5],
+    pub cols: [PinDriver<'a, AnyInputPin, Input>; 6],
 }
 pub struct KeyboardSide<'a> {
     pub base_layer: HashMap<(i32, i32), u8>,
     pub shift_layer: HashMap<(i32, i32), u8>,
     pub upper_layer: HashMap<(i32, i32), u8>,
-    pub row_active: u32,
+    pub report_delay: u32,
     pub pins_active_buffer: [(i32, i32); 6],
     pub pins_active_cnt: usize,
     pub layer: Layer,
@@ -90,58 +66,30 @@ impl KeyboardSide<'_> {
     pub fn new() -> KeyboardSide<'static> {
         let peripherals = Peripherals::take().unwrap();
 
-        let mut col_0 = PinDriver::input(peripherals.pins.gpio2).unwrap();
-        let mut col_1 = PinDriver::input(peripherals.pins.gpio3).unwrap();
-        let mut col_2 = PinDriver::input(peripherals.pins.gpio10).unwrap();
-        let mut col_3 = PinDriver::input(peripherals.pins.gpio6).unwrap();
-        let mut col_4 = PinDriver::input(peripherals.pins.gpio7).unwrap();
-        let mut col_5 = PinDriver::input(peripherals.pins.gpio4).unwrap();
-
-        col_0.set_interrupt_type(InterruptType::PosEdge).unwrap();
-        col_1.set_interrupt_type(InterruptType::PosEdge).unwrap();
-        col_2.set_interrupt_type(InterruptType::PosEdge).unwrap();
-        col_3.set_interrupt_type(InterruptType::PosEdge).unwrap();
-        col_4.set_interrupt_type(InterruptType::PosEdge).unwrap();
-        col_5.set_interrupt_type(InterruptType::PosEdge).unwrap();
-
-        unsafe { col_0.subscribe(col_0_callback).unwrap() }
-        unsafe { col_1.subscribe(col_1_callback).unwrap() }
-        unsafe { col_2.subscribe(col_2_callback).unwrap() }
-        unsafe { col_3.subscribe(col_3_callback).unwrap() }
-        unsafe { col_4.subscribe(col_4_callback).unwrap() }
-        unsafe { col_5.subscribe(col_5_callback).unwrap() }
-
-        col_0.enable_interrupt().unwrap();
-        col_1.enable_interrupt().unwrap();
-        col_2.enable_interrupt().unwrap();
-        col_3.enable_interrupt().unwrap();
-        col_4.enable_interrupt().unwrap();
-        col_5.enable_interrupt().unwrap();
-
         KeyboardSide {
             base_layer: HashMap::new(),
             shift_layer: HashMap::new(),
             upper_layer: HashMap::new(),
-            row_active: ROW_INIT,
+            report_delay: REPORT_DELAY,
             pins_active_buffer: [(PIN_INACTIVE, PIN_INACTIVE); 6],
             pins_active_cnt: 0,
             layer: Layer::Base,
             key_matrix: KeyMatrix {
-                rows: Rows {
-                    row_0: PinDriver::output(peripherals.pins.gpio0).unwrap(),
-                    row_1: PinDriver::output(peripherals.pins.gpio1).unwrap(),
-                    row_2: PinDriver::output(peripherals.pins.gpio12).unwrap(),
-                    row_3: PinDriver::output(peripherals.pins.gpio18).unwrap(),
-                    row_4: PinDriver::output(peripherals.pins.gpio19).unwrap(),
-                },
-                cols: Cols {
-                    col_0: col_0,
-                    col_1: col_1,
-                    col_2: col_2,
-                    col_3: col_3,
-                    col_4: col_4,
-                    col_5: col_5,
-                },
+                rows: [
+                    PinDriver::output(peripherals.pins.gpio0.downgrade_output()).unwrap(),
+                    PinDriver::output(peripherals.pins.gpio1.downgrade_output()).unwrap(),
+                    PinDriver::output(peripherals.pins.gpio12.downgrade_output()).unwrap(),
+                    PinDriver::output(peripherals.pins.gpio18.downgrade_output()).unwrap(),
+                    PinDriver::output(peripherals.pins.gpio19.downgrade_output()).unwrap(),
+                ],
+                cols: [
+                    PinDriver::input(peripherals.pins.gpio2.downgrade_input()).unwrap(),
+                    PinDriver::input(peripherals.pins.gpio3.downgrade_input()).unwrap(),
+                    PinDriver::input(peripherals.pins.gpio10.downgrade_input()).unwrap(),
+                    PinDriver::input(peripherals.pins.gpio6.downgrade_input()).unwrap(),
+                    PinDriver::input(peripherals.pins.gpio7.downgrade_input()).unwrap(),
+                    PinDriver::input(peripherals.pins.gpio4.downgrade_input()).unwrap(),
+                ],
             },
         }
     }
@@ -275,146 +223,15 @@ impl KeyboardSide<'_> {
         if self.key_matrix.cols.col_0.is_high() && button_state {
             self.pins_active.1 = self.key_matrix.cols.col_0.pin();
         }
-
-        /*********************************************************/
-
-        if self.key_matrix.cols.col_1.is_high() != button_state {
-            FreeRtos::delay_ms(DEBOUNCE_DELAY);
-            button_state = true;
-        }
-        /* check again if col is high */
-        if self.key_matrix.cols.col_1.is_high() && button_state {
-            self.pins_active.1 = self.key_matrix.cols.col_1.pin();
-        }
-
-        /*********************************************************/
-
-        if self.key_matrix.cols.col_2.is_high() != button_state {
-            FreeRtos::delay_ms(DEBOUNCE_DELAY);
-            button_state = true;
-        }
-        /* check again if col is high */
-        if self.key_matrix.cols.col_2.is_high() && button_state {
-            self.pins_active.1 = self.key_matrix.cols.col_2.pin();
-        }
-
-        /*********************************************************/
-
-        if self.key_matrix.cols.col_3.is_high() != button_state {
-            FreeRtos::delay_ms(DEBOUNCE_DELAY);
-            button_state = true;
-        }
-        /* check again if col is high */
-        if self.key_matrix.cols.col_3.is_high() && button_state {
-            self.pins_active.1 = self.key_matrix.cols.col_3.pin();
-        }
-
-        /*********************************************************/
-
-        if self.key_matrix.cols.col_4.is_high() != button_state {
-            FreeRtos::delay_ms(DEBOUNCE_DELAY);
-            button_state = true;
-        }
-        /* check again if col is high */
-        if self.key_matrix.cols.col_4.is_high() && button_state {
-            self.pins_active.1 = self.key_matrix.cols.col_4.pin();
-        }
-
-        /*********************************************************/
-
-        if self.key_matrix.cols.col_5.is_high() != button_state {
-            FreeRtos::delay_ms(DEBOUNCE_DELAY);
-            button_state = true;
-        }
-        /* check again if col is high */
-        if self.key_matrix.cols.col_5.is_high() && button_state {
-            self.pins_active.1 = self.key_matrix.cols.col_5.pin();
-        }
     }
     */
 
     pub fn check_cols(&mut self) {
-        if COL_0_FLAG.load(Ordering::Relaxed) {
-            COL_0_FLAG.store(false, Ordering::Relaxed);
-            self.pins_active_buffer[self.pins_active_cnt].1 = self.key_matrix.cols.col_0.pin();
-            self.pins_active_cnt += 1;
-        }
-
-        if COL_1_FLAG.load(Ordering::Relaxed) {
-            COL_1_FLAG.store(false, Ordering::Relaxed);
-            self.pins_active_buffer[self.pins_active_cnt].1 = self.key_matrix.cols.col_1.pin();
-            self.pins_active_cnt += 1;
-        }
-
-        if COL_2_FLAG.load(Ordering::Relaxed) {
-            COL_2_FLAG.store(false, Ordering::Relaxed);
-            self.pins_active_buffer[self.pins_active_cnt].1 = self.key_matrix.cols.col_2.pin();
-            self.pins_active_cnt += 1;
-        }
-
-        if COL_3_FLAG.load(Ordering::Relaxed) {
-            COL_3_FLAG.store(false, Ordering::Relaxed);
-            self.pins_active_buffer[self.pins_active_cnt].1 = self.key_matrix.cols.col_3.pin();
-            self.pins_active_cnt += 1;
-        }
-
-        if COL_4_FLAG.load(Ordering::Relaxed) {
-            COL_4_FLAG.store(false, Ordering::Relaxed);
-            self.pins_active_buffer[self.pins_active_cnt].1 = self.key_matrix.cols.col_4.pin();
-            self.pins_active_cnt += 1;
-        }
-
-        if COL_5_FLAG.load(Ordering::Relaxed) {
-            COL_5_FLAG.store(false, Ordering::Relaxed);
-            self.pins_active_buffer[self.pins_active_cnt].1 = self.key_matrix.cols.col_5.pin();
-            self.pins_active_cnt += 1;
-        }
-    }
-
-    pub fn set_rows(&mut self, state: &'static str) {
-        match state {
-            "high" => match self.row_active {
-                0 => {
-                    self.key_matrix.rows.row_0.set_high().unwrap();
-                    self.pins_active_buffer[self.pins_active_cnt].0 =
-                        self.key_matrix.rows.row_0.pin()
-                }
-                1 => {
-                    self.key_matrix.rows.row_1.set_high().unwrap();
-                    self.pins_active_buffer[self.pins_active_cnt].0 =
-                        self.key_matrix.rows.row_1.pin()
-                }
-                2 => {
-                    self.key_matrix.rows.row_2.set_high().unwrap();
-                    self.pins_active_buffer[self.pins_active_cnt].0 =
-                        self.key_matrix.rows.row_2.pin()
-                }
-                3 => {
-                    self.key_matrix.rows.row_3.set_high().unwrap();
-                    self.pins_active_buffer[self.pins_active_cnt].0 =
-                        self.key_matrix.rows.row_3.pin()
-                }
-                4 => {
-                    self.key_matrix.rows.row_4.set_high().unwrap();
-                    self.pins_active_buffer[self.pins_active_cnt].0 =
-                        self.key_matrix.rows.row_4.pin()
-                }
-                _ => {}
-            },
-            "low" => {
-                match self.row_active {
-                    0 => self.key_matrix.rows.row_0.set_low().unwrap(),
-                    1 => self.key_matrix.rows.row_1.set_low().unwrap(),
-                    2 => self.key_matrix.rows.row_2.set_low().unwrap(),
-                    3 => self.key_matrix.rows.row_3.set_low().unwrap(),
-                    4 => self.key_matrix.rows.row_4.set_low().unwrap(),
-                    _ => {}
-                }
-                /* Increment the active row */
-                self.row_active = (self.row_active + 1) % 5;
+        for cols in self.key_matrix.cols.iter_mut() {
+            if cols.is_high() {
+                self.pins_active_buffer[self.pins_active_cnt].1 = cols.pin();
+                self.pins_active_cnt += 1;
             }
-
-            _ => {}
         }
     }
 
@@ -425,34 +242,41 @@ impl KeyboardSide<'_> {
     //         Layer::Upper => self.upper_layer.get(&self.pins_active),
     //     }
     // }
-}
 
-fn col_0_callback() {
-    /* Assert FLAG indicating a press button happened */
-    COL_0_FLAG.store(true, Ordering::Relaxed);
-}
+    pub fn iter_rows_cols(&mut self) {
+        for row in self.key_matrix.rows.iter_mut() {
+            /* set row to high */
+            row.set_high().unwrap();
 
-fn col_1_callback() {
-    /* Assert FLAG indicating a press button happened */
-    COL_1_FLAG.store(true, Ordering::Relaxed);
-}
+            /* store the pin in active_pins */
+            self.pins_active_buffer[self.pins_active_cnt].0 = row.pin();
 
-fn col_2_callback() {
-    /* Assert FLAG indicating a press button happened */
-    COL_2_FLAG.store(true, Ordering::Relaxed);
-}
+            /* check if a col is high */
+            for col in self.key_matrix.cols.iter_mut() {
+                if col.is_high() {
+                    self.pins_active_buffer[self.pins_active_cnt].1 = col.pin();
+                    self.pins_active_cnt += 1;
+                }
+            }
 
-fn col_3_callback() {
-    /* Assert FLAG indicating a press button happened */
-    COL_3_FLAG.store(true, Ordering::Relaxed);
-}
+            row.set_low().unwrap();
 
-fn col_4_callback() {
-    /* Assert FLAG indicating a press button happened */
-    COL_4_FLAG.store(true, Ordering::Relaxed);
-}
+            /* Decrement report_delay */
+            self.report_delay -= 1;
 
-fn col_5_callback() {
-    /* Assert FLAG indicating a press button happened */
-    COL_5_FLAG.store(true, Ordering::Relaxed);
+            /* Wait 1 ms */
+            FreeRtos::delay_ms(1);
+        }
+    }
+
+    pub fn reset(&mut self) {
+        /* Reset report_delay */
+        self.report_delay = REPORT_DELAY;
+
+        /* Reset active_pins */
+        for pins in self.pins_active_buffer.iter_mut() {
+            *pins = (PIN_INACTIVE, PIN_INACTIVE);
+        }
+        self.pins_active_cnt = 0;
+    }
 }
