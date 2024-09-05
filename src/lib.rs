@@ -31,47 +31,21 @@ PINS|  2  |  3  |  10 |  6  |  7  |  4  |           PINS|  2  |  3  |  10 |  6  
 
 */
 use crate::enums::*;
-use esp_idf_svc::hal::delay::FreeRtos;
 use esp_idf_svc::hal::gpio::*;
 use esp_idf_svc::hal::peripherals::Peripherals;
 use std::collections::HashMap;
 
-pub const DELAY_DEFAULT: u32 = 20;
-pub const DELAY_SAME_KEY: u32 = 60;
-pub const PIN_INACTIVE: i32 = -1;
-pub const ROW_INIT: u32 = 0;
-pub const DEBOUNCE_DELAY: u32 = 10;
-
 pub mod ble_keyboard;
 pub mod enums;
 
-pub struct Rows<'a> {
-    pub row_0: PinDriver<'a, Gpio0, Output>,
-    pub row_1: PinDriver<'a, Gpio1, Output>,
-    pub row_2: PinDriver<'a, Gpio12, Output>,
-    pub row_3: PinDriver<'a, Gpio18, Output>,
-    pub row_4: PinDriver<'a, Gpio19, Output>,
-}
-
-pub struct Cols<'a> {
-    pub col_0: PinDriver<'a, Gpio2, Input>,
-    pub col_1: PinDriver<'a, Gpio3, Input>,
-    pub col_2: PinDriver<'a, Gpio10, Input>,
-    pub col_3: PinDriver<'a, Gpio6, Input>,
-    pub col_4: PinDriver<'a, Gpio7, Input>,
-    pub col_5: PinDriver<'a, Gpio4, Input>,
-}
-
 pub struct KeyMatrix<'a> {
-    pub rows: Rows<'a>,
-    pub cols: Cols<'a>,
+    pub rows: [PinDriver<'a, AnyOutputPin, Output>; 5],
+    pub cols: [PinDriver<'a, AnyInputPin, Input>; 6],
 }
 pub struct KeyboardSide<'a> {
     pub base_layer: HashMap<(i32, i32), u8>,
     pub shift_layer: HashMap<(i32, i32), u8>,
     pub upper_layer: HashMap<(i32, i32), u8>,
-    pub row_active: u32,
-    pub pins_active: (i32, i32),
     pub layer: Layer,
     pub key_matrix: KeyMatrix<'a>,
 }
@@ -84,25 +58,23 @@ impl KeyboardSide<'_> {
             base_layer: HashMap::new(),
             shift_layer: HashMap::new(),
             upper_layer: HashMap::new(),
-            row_active: ROW_INIT,
-            pins_active: (PIN_INACTIVE, PIN_INACTIVE),
             layer: Layer::Base,
             key_matrix: KeyMatrix {
-                rows: Rows {
-                    row_0: PinDriver::output(peripherals.pins.gpio0).unwrap(),
-                    row_1: PinDriver::output(peripherals.pins.gpio1).unwrap(),
-                    row_2: PinDriver::output(peripherals.pins.gpio12).unwrap(),
-                    row_3: PinDriver::output(peripherals.pins.gpio18).unwrap(),
-                    row_4: PinDriver::output(peripherals.pins.gpio19).unwrap(),
-                },
-                cols: Cols {
-                    col_0: PinDriver::input(peripherals.pins.gpio2).unwrap(),
-                    col_1: PinDriver::input(peripherals.pins.gpio3).unwrap(),
-                    col_2: PinDriver::input(peripherals.pins.gpio10).unwrap(),
-                    col_3: PinDriver::input(peripherals.pins.gpio6).unwrap(),
-                    col_4: PinDriver::input(peripherals.pins.gpio7).unwrap(),
-                    col_5: PinDriver::input(peripherals.pins.gpio4).unwrap(),
-                },
+                rows: [
+                    PinDriver::output(peripherals.pins.gpio0.downgrade_output()).unwrap(),
+                    PinDriver::output(peripherals.pins.gpio1.downgrade_output()).unwrap(),
+                    PinDriver::output(peripherals.pins.gpio12.downgrade_output()).unwrap(),
+                    PinDriver::output(peripherals.pins.gpio18.downgrade_output()).unwrap(),
+                    PinDriver::output(peripherals.pins.gpio19.downgrade_output()).unwrap(),
+                ],
+                cols: [
+                    PinDriver::input(peripherals.pins.gpio2.downgrade_input()).unwrap(),
+                    PinDriver::input(peripherals.pins.gpio3.downgrade_input()).unwrap(),
+                    PinDriver::input(peripherals.pins.gpio10.downgrade_input()).unwrap(),
+                    PinDriver::input(peripherals.pins.gpio6.downgrade_input()).unwrap(),
+                    PinDriver::input(peripherals.pins.gpio7.downgrade_input()).unwrap(),
+                    PinDriver::input(peripherals.pins.gpio4.downgrade_input()).unwrap(),
+                ],
             },
         }
     }
@@ -224,123 +196,11 @@ impl KeyboardSide<'_> {
         self.upper_layer.insert((19, 4), HidMapings::Enter as u8); // ENTER
     }
 
-    pub fn check_pins(&mut self) {
-        let mut button_state = false;
-
-        if self.key_matrix.cols.col_0.is_high() {
-            FreeRtos::delay_ms(DEBOUNCE_DELAY);
-            button_state = true;
-        }
-        /* check again if col is high */
-        if self.key_matrix.cols.col_0.is_high() && button_state {
-            self.pins_active.1 = self.key_matrix.cols.col_0.pin();
-        }
-
-        /*********************************************************/
-
-        if self.key_matrix.cols.col_1.is_high() != button_state {
-            FreeRtos::delay_ms(DEBOUNCE_DELAY);
-            button_state = true;
-        }
-        /* check again if col is high */
-        if self.key_matrix.cols.col_1.is_high() && button_state {
-            self.pins_active.1 = self.key_matrix.cols.col_1.pin();
-        }
-
-        /*********************************************************/
-
-        if self.key_matrix.cols.col_2.is_high() != button_state {
-            FreeRtos::delay_ms(DEBOUNCE_DELAY);
-            button_state = true;
-        }
-        /* check again if col is high */
-        if self.key_matrix.cols.col_2.is_high() && button_state {
-            self.pins_active.1 = self.key_matrix.cols.col_2.pin();
-        }
-
-        /*********************************************************/
-
-        if self.key_matrix.cols.col_3.is_high() != button_state {
-            FreeRtos::delay_ms(DEBOUNCE_DELAY);
-            button_state = true;
-        }
-        /* check again if col is high */
-        if self.key_matrix.cols.col_3.is_high() && button_state {
-            self.pins_active.1 = self.key_matrix.cols.col_3.pin();
-        }
-
-        /*********************************************************/
-
-        if self.key_matrix.cols.col_4.is_high() != button_state {
-            FreeRtos::delay_ms(DEBOUNCE_DELAY);
-            button_state = true;
-        }
-        /* check again if col is high */
-        if self.key_matrix.cols.col_4.is_high() && button_state {
-            self.pins_active.1 = self.key_matrix.cols.col_4.pin();
-        }
-
-        /*********************************************************/
-
-        if self.key_matrix.cols.col_5.is_high() != button_state {
-            FreeRtos::delay_ms(DEBOUNCE_DELAY);
-            button_state = true;
-        }
-        /* check again if col is high */
-        if self.key_matrix.cols.col_5.is_high() && button_state {
-            self.pins_active.1 = self.key_matrix.cols.col_5.pin();
-        }
-    }
-
-    pub fn set_rows(&mut self, state: &'static str) {
-        match state {
-            "high" => match self.row_active {
-                0 => {
-                    self.key_matrix.rows.row_0.set_high().unwrap();
-                    self.pins_active.0 = self.key_matrix.rows.row_0.pin()
-                }
-                1 => {
-                    self.key_matrix.rows.row_1.set_high().unwrap();
-                    self.pins_active.0 = self.key_matrix.rows.row_1.pin()
-                }
-                2 => {
-                    self.key_matrix.rows.row_2.set_high().unwrap();
-                    self.pins_active.0 = self.key_matrix.rows.row_2.pin()
-                }
-                3 => {
-                    self.key_matrix.rows.row_3.set_high().unwrap();
-                    self.pins_active.0 = self.key_matrix.rows.row_3.pin()
-                }
-                4 => {
-                    self.key_matrix.rows.row_4.set_high().unwrap();
-                    self.pins_active.0 = self.key_matrix.rows.row_4.pin()
-                }
-                _ => {}
-            },
-            "low" => {
-                match self.row_active {
-                    0 => self.key_matrix.rows.row_0.set_low().unwrap(),
-                    1 => self.key_matrix.rows.row_1.set_low().unwrap(),
-                    2 => self.key_matrix.rows.row_2.set_low().unwrap(),
-                    3 => self.key_matrix.rows.row_3.set_low().unwrap(),
-                    4 => self.key_matrix.rows.row_4.set_low().unwrap(),
-                    _ => {}
-                }
-                /* reset pins_active */
-                self.pins_active = (PIN_INACTIVE, PIN_INACTIVE);
-                /* Increment the active row */
-                self.row_active = (self.row_active + 1) % 5;
-            }
-
-            _ => {}
-        }
-    }
-
-    pub fn provide_value(&mut self) -> Option<&u8> {
-        match self.layer {
-            Layer::Base => self.base_layer.get(&self.pins_active),
-            Layer::Shift => self.shift_layer.get(&self.pins_active),
-            Layer::Upper => self.upper_layer.get(&self.pins_active),
-        }
-    }
+    // pub fn provide_value(&mut self) -> Option<&u8> {
+    //     match self.layer {
+    //         Layer::Base => self.base_layer.get(&self.pins_active),
+    //         Layer::Shift => self.shift_layer.get(&self.pins_active),
+    //         Layer::Upper => self.upper_layer.get(&self.pins_active),
+    //     }
+    // }
 }
