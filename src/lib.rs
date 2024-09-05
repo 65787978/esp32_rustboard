@@ -31,18 +31,9 @@ PINS|  2  |  3  |  10 |  6  |  7  |  4  |           PINS|  2  |  3  |  10 |  6  
 
 */
 use crate::enums::*;
-use esp_idf_hal::delay::FreeRtos;
 use esp_idf_svc::hal::gpio::*;
 use esp_idf_svc::hal::peripherals::Peripherals;
 use std::collections::HashMap;
-
-pub static REPORT_DELAY: u32 = 5 * 4;
-
-pub const DELAY_DEFAULT: u32 = 20;
-pub const DELAY_SAME_KEY: u32 = 60;
-pub const PIN_INACTIVE: i32 = -1;
-pub const ROW_INIT: u32 = 0;
-pub const DEBOUNCE_DELAY: u32 = 10;
 
 pub mod ble_keyboard;
 pub mod enums;
@@ -55,9 +46,6 @@ pub struct KeyboardSide<'a> {
     pub base_layer: HashMap<(i32, i32), u8>,
     pub shift_layer: HashMap<(i32, i32), u8>,
     pub upper_layer: HashMap<(i32, i32), u8>,
-    pub report_delay: u32,
-    pub pins_active_buffer: [(i32, i32); 6],
-    pub pins_active_cnt: usize,
     pub layer: Layer,
     pub key_matrix: KeyMatrix<'a>,
 }
@@ -70,9 +58,6 @@ impl KeyboardSide<'_> {
             base_layer: HashMap::new(),
             shift_layer: HashMap::new(),
             upper_layer: HashMap::new(),
-            report_delay: REPORT_DELAY,
-            pins_active_buffer: [(PIN_INACTIVE, PIN_INACTIVE); 6],
-            pins_active_cnt: 0,
             layer: Layer::Base,
             key_matrix: KeyMatrix {
                 rows: [
@@ -211,21 +196,6 @@ impl KeyboardSide<'_> {
         self.upper_layer.insert((19, 4), HidMapings::Enter as u8); // ENTER
     }
 
-    /*
-    pub fn check_pins(&mut self) {
-        let mut button_state = false;
-
-        if self.key_matrix.cols.col_0.is_high() {
-            FreeRtos::delay_ms(DEBOUNCE_DELAY);
-            button_state = true;
-        }
-        /* check again if col is high */
-        if self.key_matrix.cols.col_0.is_high() && button_state {
-            self.pins_active.1 = self.key_matrix.cols.col_0.pin();
-        }
-    }
-    */
-
     // pub fn provide_value(&mut self) -> Option<&u8> {
     //     match self.layer {
     //         Layer::Base => self.base_layer.get(&self.pins_active),
@@ -233,50 +203,4 @@ impl KeyboardSide<'_> {
     //         Layer::Upper => self.upper_layer.get(&self.pins_active),
     //     }
     // }
-
-    pub fn check_cols(&mut self) {
-        for cols in self.key_matrix.cols.iter_mut() {
-            if cols.is_high() {
-                self.pins_active_buffer[self.pins_active_cnt].1 = cols.pin();
-                self.pins_active_cnt += 1;
-            }
-        }
-    }
-
-    pub fn iter_rows_cols(&mut self) {
-        for row in self.key_matrix.rows.iter_mut() {
-            /* set row to high */
-            row.set_high().unwrap();
-
-            /* store the pin in active_pins */
-            self.pins_active_buffer[self.pins_active_cnt].0 = row.pin();
-
-            /* check if a col is high */
-            for col in self.key_matrix.cols.iter_mut() {
-                if col.is_high() {
-                    self.pins_active_buffer[self.pins_active_cnt].1 = col.pin();
-                    self.pins_active_cnt += 1;
-                }
-            }
-
-            row.set_low().unwrap();
-
-            /* Decrement report_delay */
-            self.report_delay -= 1;
-
-            /* Wait 1 ms */
-            FreeRtos::delay_ms(1);
-        }
-    }
-
-    pub fn reset(&mut self) {
-        /* Reset report_delay */
-        self.report_delay = REPORT_DELAY;
-
-        /* Reset active_pins */
-        for pins in self.pins_active_buffer.iter_mut() {
-            *pins = (PIN_INACTIVE, PIN_INACTIVE);
-        }
-        self.pins_active_cnt = 0;
-    }
 }
