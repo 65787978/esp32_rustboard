@@ -32,17 +32,24 @@ async fn async_main() {
 }
 
 async fn ble_transmit() -> anyhow::Result<()> {
+    /* initialize BLE */
     let mut keyboard = Keyboard::new()?;
-
-    let mut layers = Layers::new();
-    layers.initialie_base_layer();
 
     println!("BLE Initialized...");
 
+    /* initialize layers */
+    let mut layers = Layers::new();
+    layers.initialie_base_layer();
+
     loop {
+        /* check if connected */
         if keyboard.connected() {
+            /* wait 10 ms */
             sleep(Duration::from_millis(10)).await;
+
+            /* check if a key has been pressed */
             if ATOMIC_BOOL.load(Ordering::Relaxed) {
+                /* get valid key */
                 if let Some(valid_key) = layers.base_layer.get(&(
                     ATOMIC_ROW.load(Ordering::Relaxed),
                     ATOMIC_COL.load(Ordering::Relaxed),
@@ -53,6 +60,7 @@ async fn ble_transmit() -> anyhow::Result<()> {
                     keyboard.release();
                 }
 
+                /* reset bool */
                 ATOMIC_BOOL.store(false, Ordering::Relaxed);
             }
         }
@@ -60,6 +68,7 @@ async fn ble_transmit() -> anyhow::Result<()> {
 }
 
 async fn matrix() -> anyhow::Result<()> {
+    /* initialize matrix */
     let mut keyboard_left_side = KeyboardSide::new();
 
     loop {
@@ -75,12 +84,15 @@ async fn matrix() -> anyhow::Result<()> {
                     ATOMIC_ROW.store(row.pin(), Ordering::Relaxed);
                     ATOMIC_COL.store(col.pin(), Ordering::Relaxed);
 
+                    /* set bool */
                     ATOMIC_BOOL.store(true, Ordering::Relaxed);
                 }
 
                 /* Wait 1 ms */
                 sleep(Duration::from_millis(1)).await;
             }
+
+            /* set row to low */
             row.set_low()?;
         }
     }
