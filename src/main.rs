@@ -87,13 +87,13 @@ async fn matrix() -> anyhow::Result<()> {
                     /* set bool */
                     ATOMIC_BOOL.store(true, Ordering::Relaxed);
                 }
-
-                /* Wait 1 ms */
-                delay_ms(1).await;
             }
 
             /* set row to low */
             row.set_low()?;
+
+            /* Wait 1 ms */
+            delay_ms(1).await;
         }
     }
 }
