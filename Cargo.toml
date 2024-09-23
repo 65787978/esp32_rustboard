@@ -37,7 +37,7 @@ anyhow = "1"
 atomic = "0.6.0"
 esp-idf-sys = "0.35.0"
 async-std = "1.13.0"
-tokio = { version = "1.40.0", features = ["time"] }
+embassy-time =  { version = "0.3.2", features = ["generic-queue-8"] }
 
 [build-dependencies]
 anyhow = "1"

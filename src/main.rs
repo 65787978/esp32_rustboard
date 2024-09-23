@@ -6,10 +6,10 @@ espflash flash ../target/riscv32imc-esp-espidf/debug/esp32-rust-split-keyboard -
 use crate::ble_keyboard::*;
 use anyhow;
 use async_std::task::spawn;
+use embassy_time::{Duration, Timer};
 use esp32_rust_split_keyboard::*;
 use esp_idf_hal::task::block_on;
 use std::sync::atomic::{AtomicBool, AtomicI32, Ordering};
-use tokio::time::{sleep, Duration};
 
 static ATOMIC_ROW: AtomicI32 = AtomicI32::new(0);
 static ATOMIC_COL: AtomicI32 = AtomicI32::new(0);
@@ -45,7 +45,7 @@ async fn ble_transmit() -> anyhow::Result<()> {
         /* check if connected */
         if keyboard.connected() {
             /* wait 10 ms */
-            sleep(Duration::from_millis(10)).await;
+            delay_ms(10).await;
 
             /* check if a key has been pressed */
             if ATOMIC_BOOL.load(Ordering::Relaxed) {
@@ -89,11 +89,16 @@ async fn matrix() -> anyhow::Result<()> {
                 }
 
                 /* Wait 1 ms */
-                sleep(Duration::from_millis(1)).await;
+                delay_ms(1).await;
             }
 
             /* set row to low */
             row.set_low()?;
         }
     }
+}
+
+async fn delay_ms(ms: u32) {
+    let delay = Duration::from_millis(ms as u64);
+    Timer::after(delay).await;
 }
