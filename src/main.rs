@@ -5,8 +5,15 @@ espflash flash ../target/riscv32imc-esp-espidf/debug/esp32-rust-split-keyboard -
 
 use crate::ble_keyboard::*;
 use anyhow;
+use async_std::task::spawn;
 use esp32_rust_split_keyboard::*;
-use esp_idf_hal::delay::FreeRtos;
+use esp_idf_hal::task::block_on;
+use std::sync::atomic::{AtomicBool, AtomicI32, Ordering};
+use tokio::time::{sleep, Duration};
+
+static ATOMIC_ROW: AtomicI32 = AtomicI32::new(0);
+static ATOMIC_COL: AtomicI32 = AtomicI32::new(0);
+static ATOMIC_BOOL: AtomicBool = AtomicBool::new(false);
 
 fn main() -> anyhow::Result<()> {
     esp_idf_svc::sys::link_patches();
@@ -14,46 +21,67 @@ fn main() -> anyhow::Result<()> {
     // Bind the log crate to the ESP Logging facilities
     esp_idf_svc::log::EspLogger::initialize_default();
 
+    block_on(async { async_main().await });
+
+    Ok(())
+}
+
+async fn async_main() {
+    spawn(ble_transmit());
+    spawn(matrix());
+}
+
+async fn ble_transmit() -> anyhow::Result<()> {
     let mut keyboard = Keyboard::new()?;
 
-    let mut keyboard_left_side = KeyboardSide::new();
-    keyboard_left_side.initialize_layers();
+    let mut layers = Layers::new();
+    layers.initialie_base_layer();
 
-    let mut key_pressed: bool = false;
+    println!("BLE Initialized...");
 
     loop {
         if keyboard.connected() {
-            /* check rows and cols */
-            for row in keyboard_left_side.key_matrix.rows.iter_mut() {
-                /* set row to high */
-                row.set_high()?;
-
-                /* check if a col is high */
-                for col in keyboard_left_side.key_matrix.cols.iter_mut() {
-                    /* if a col is high */
-                    while col.is_high() {
-                        /* and if the row-col combination is valid */
-                        if let Some(valid_key) =
-                            keyboard_left_side.base_layer.get(&(row.pin(), col.pin()))
-                        {
-                            /* send press key */
-                            log::info!("Valid_Key = {:?}", *valid_key);
-                            keyboard.press(*valid_key);
-                            key_pressed = true;
-                        }
-                    }
-                    /* if a key has been pressed, send a release */
-                    if key_pressed {
-                        keyboard.release();
-                        key_pressed = false;
-                    }
+            sleep(Duration::from_millis(10)).await;
+            if ATOMIC_BOOL.load(Ordering::Relaxed) {
+                if let Some(valid_key) = layers.base_layer.get(&(
+                    ATOMIC_ROW.load(Ordering::Relaxed),
+                    ATOMIC_COL.load(Ordering::Relaxed),
+                )) {
+                    /* send press key */
+                    println!("Valid_Key = {:?}", *valid_key);
+                    keyboard.press(*valid_key);
+                    keyboard.release();
                 }
 
-                row.set_low()?;
+                ATOMIC_BOOL.store(false, Ordering::Relaxed);
+            }
+        }
+    }
+}
+
+async fn matrix() -> anyhow::Result<()> {
+    let mut keyboard_left_side = KeyboardSide::new();
+
+    loop {
+        /* check rows and cols */
+        for row in keyboard_left_side.key_matrix.rows.iter_mut() {
+            /* set row to high */
+            row.set_high()?;
+
+            /* check if a col is high */
+            for col in keyboard_left_side.key_matrix.cols.iter_mut() {
+                /* if a col is high */
+                if col.is_high() {
+                    ATOMIC_ROW.store(row.pin(), Ordering::Relaxed);
+                    ATOMIC_COL.store(col.pin(), Ordering::Relaxed);
+
+                    ATOMIC_BOOL.store(true, Ordering::Relaxed);
+                }
 
                 /* Wait 1 ms */
-                FreeRtos::delay_ms(10);
+                sleep(Duration::from_millis(1)).await;
             }
+            row.set_low()?;
         }
     }
 }
