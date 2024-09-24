@@ -5,12 +5,11 @@ espflash flash ../target/riscv32imc-esp-espidf/debug/esp32-rust-split-keyboard -
 
 use crate::ble_keyboard::*;
 use anyhow;
-use async_std::task::spawn;
+use embassy_futures::select::select;
 use embassy_time::{Duration, Timer};
 use esp32_rust_split_keyboard::*;
 use esp_idf_hal::task::block_on;
 use std::sync::atomic::{AtomicBool, AtomicI32, Ordering};
-
 static ATOMIC_ROW: AtomicI32 = AtomicI32::new(0);
 static ATOMIC_COL: AtomicI32 = AtomicI32::new(0);
 static ATOMIC_BOOL: AtomicBool = AtomicBool::new(false);
@@ -21,19 +20,17 @@ fn main() -> anyhow::Result<()> {
     // Bind the log crate to the ESP Logging facilities
     esp_idf_svc::log::EspLogger::initialize_default();
 
-    block_on(async { async_main().await });
+    /* Run the tasks in parallel */
+    block_on(async {
+        select(ble_transmit(), matrix()).await;
+    });
 
     Ok(())
 }
 
-async fn async_main() {
-    spawn(ble_transmit());
-    spawn(matrix());
-}
-
-async fn ble_transmit() -> anyhow::Result<()> {
+async fn ble_transmit() -> ! {
     /* initialize BLE */
-    let mut keyboard = Keyboard::new()?;
+    let mut keyboard = Keyboard::new().unwrap();
 
     println!("BLE Initialized...");
 
@@ -67,7 +64,7 @@ async fn ble_transmit() -> anyhow::Result<()> {
     }
 }
 
-async fn matrix() -> anyhow::Result<()> {
+async fn matrix() -> ! {
     /* initialize matrix */
     let mut keyboard_left_side = KeyboardSide::new();
 
@@ -75,7 +72,7 @@ async fn matrix() -> anyhow::Result<()> {
         /* check rows and cols */
         for row in keyboard_left_side.key_matrix.rows.iter_mut() {
             /* set row to high */
-            row.set_high()?;
+            row.set_high().unwrap();
 
             /* check if a col is high */
             for col in keyboard_left_side.key_matrix.cols.iter_mut() {
@@ -90,7 +87,7 @@ async fn matrix() -> anyhow::Result<()> {
             }
 
             /* set row to low */
-            row.set_low()?;
+            row.set_low().unwrap();
 
             /* Wait 1 ms */
             delay_ms(1).await;
