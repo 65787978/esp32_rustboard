@@ -1,6 +1,6 @@
 /*
-to flash:
-espflash flash ./target/riscv32imc-esp-espidf/release/esp32-rust-split-keyboard --monitor
+to build: cargo build --release
+to flash: espflash flash ./target/riscv32imc-esp-espidf/release/esp32-rust-split-keyboard --monitor
 */
 
 use crate::ble_keyboard::*;
