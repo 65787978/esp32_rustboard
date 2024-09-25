@@ -7,6 +7,8 @@ use esp32_nimble::{
 };
 use std::sync::Arc;
 
+use crate::HidMapings;
+
 const KEYBOARD_ID: u8 = 0x01;
 const MEDIA_KEYS_ID: u8 = 0x02;
 
@@ -79,10 +81,10 @@ pub const SHIFT: u8 = 0x02;
 pub const ASCII_MAP: &[u8] = &[];
 
 #[repr(packed)]
-pub struct KeyReport {
-    pub modifiers: u8,
-    pub reserved: u8,
-    pub keys: [u8; 6],
+struct KeyReport {
+    modifiers: u8,
+    reserved: u8,
+    keys: [u8; 6],
 }
 
 pub struct Keyboard {
@@ -90,7 +92,7 @@ pub struct Keyboard {
     input_keyboard: Arc<Mutex<BLECharacteristic>>,
     output_keyboard: Arc<Mutex<BLECharacteristic>>,
     input_media_keys: Arc<Mutex<BLECharacteristic>>,
-    pub key_report: KeyReport,
+    key_report: KeyReport,
 }
 
 impl Keyboard {
@@ -143,20 +145,27 @@ impl Keyboard {
         self.server.connected_count() > 0
     }
 
-    pub fn write(&mut self, str: &str) {
-        for char in str.as_bytes() {
-            self.press(*char);
-            self.release();
-        }
-    }
+    // pub fn write(&mut self, str: &str) {
+    //     for char in str.as_bytes() {
+    //         self.press(*char);
+    //         self.release();
+    //     }
+    // }
 
-    pub fn press(&mut self, char: u8) {
-        let key = char;
+    pub fn press(&mut self, char: HidMapings, modifier: HidMapings) {
+        let mut key = char;
         // if (key & SHIFT) > 0 {
         //     self.key_report.modifiers |= 0x02;
         //     key &= !SHIFT;
         // }
-        self.key_report.keys[0] = key;
+        match modifier {
+            HidMapings::Shift => self.key_report.modifiers |= 0x02,
+            HidMapings::Control => self.key_report.modifiers |= 0x01,
+            HidMapings::Space => key = HidMapings::Space,
+            _ => {}
+        }
+
+        self.key_report.keys[0] = key as u8;
         self.send_report(&self.key_report);
     }
 

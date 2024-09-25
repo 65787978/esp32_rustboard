@@ -8,7 +8,7 @@ pub enum Layer {
 /* Scan codes - HID Keyboard: https://gist.github.com/MightyPork/6da26e382a7ad91b5496ee55fdc73db2 */
 #[derive(Clone, Copy, Debug)]
 pub enum HidMapings {
-    No = 0x00,
+    None = 0x00,
     Undefined = 0x03,
     A = 0x04,
     B = 0x05,

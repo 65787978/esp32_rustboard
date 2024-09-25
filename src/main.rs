@@ -4,9 +4,10 @@ espflash flash ./target/riscv32imc-esp-espidf/release/esp32-rust-split-keyboard 
 */
 
 use crate::ble_keyboard::*;
+use crate::delay::delay_ms;
+
 use anyhow;
 use embassy_futures::select::select3;
-use embassy_time::{Duration, Timer};
 use enums::HidMapings;
 use esp32_rust_split_keyboard::*;
 use esp_idf_hal::task::block_on;
@@ -53,7 +54,9 @@ async fn ble_transmit() -> ! {
     layers.initialie_base_layer();
     layers.initialie_modifier_layer();
 
-    let mut key: u8 = 0;
+    let mut key: HidMapings = HidMapings::None;
+    let mut modifier: HidMapings = HidMapings::None;
+
     loop {
         /* check if connected */
         if keyboard.connected() {
@@ -67,8 +70,12 @@ async fn ble_transmit() -> ! {
                     ATOMIC_KEY_ROW.load(Ordering::Relaxed),
                     ATOMIC_KEY_COL.load(Ordering::Relaxed),
                 )) {
+                    /* set key */
                     key = *valid_key;
                 }
+
+                /* reset bool */
+                ATOMIC_KEY_BOOL.store(false, Ordering::Relaxed);
             }
 
             if ATOMIC_MODIFIER_BOOL.load(Ordering::Relaxed) {
@@ -77,15 +84,8 @@ async fn ble_transmit() -> ! {
                     ATOMIC_MODIFIER_ROW.load(Ordering::Relaxed),
                     ATOMIC_MODIFIER_COL.load(Ordering::Relaxed),
                 )) {
-                    match *valid_modifier_key {
-                        1 => keyboard.key_report.modifiers |= 0x01,
-
-                        2 => keyboard.key_report.modifiers |= 0x02,
-
-                        44 => key = HidMapings::Space as u8,
-
-                        _ => {}
-                    }
+                    /* set modifier */
+                    modifier = *valid_modifier_key;
                 }
 
                 /* reset bool */
@@ -93,11 +93,12 @@ async fn ble_transmit() -> ! {
             }
 
             /* send press key */
-            keyboard.press(key);
+            keyboard.press(key, modifier);
             keyboard.release();
 
-            /* reset bool */
-            ATOMIC_KEY_BOOL.store(false, Ordering::Relaxed);
+            /* reset key and modifier */
+            key = HidMapings::None;
+            modifier = HidMapings::None;
         }
     }
 }
@@ -150,8 +151,4 @@ async fn modifier_matrix(matrix: &mut ModifierMatrix<'_>) -> ! {
         /* Wait 1 ms */
         delay_ms(1).await;
     }
-}
-async fn delay_ms(ms: u32) {
-    let delay = Duration::from_millis(ms as u64);
-    Timer::after(delay).await;
 }

@@ -39,6 +39,15 @@ use std::collections::HashMap;
 pub mod ble_keyboard;
 pub mod enums;
 
+pub mod delay {
+    use embassy_time::{Duration, Timer};
+
+    pub async fn delay_ms(ms: u32) {
+        let delay = Duration::from_millis(ms as u64);
+        Timer::after(delay).await;
+    }
+}
+
 pub struct KeyMatrix<'a> {
     pub rows: [PinDriver<'a, AnyOutputPin, Output>; 4],
     pub cols: [PinDriver<'a, AnyInputPin, Input>; 6],
@@ -221,8 +230,8 @@ impl KeyboardSide<'_> {
 }
 
 pub struct Layers {
-    pub base_layer: HashMap<(i32, i32), u8>,
-    pub modifier_layer: HashMap<(i32, i32), u8>,
+    pub base_layer: HashMap<(i32, i32), HidMapings>,
+    pub modifier_layer: HashMap<(i32, i32), HidMapings>,
 }
 
 impl Layers {
@@ -234,39 +243,38 @@ impl Layers {
     }
 
     pub fn initialie_base_layer(&mut self) {
-        self.base_layer.insert((0, 2), HidMapings::Escape as u8); // ESC
-        self.base_layer.insert((0, 3), HidMapings::Num1 as u8); // 1
-        self.base_layer.insert((0, 10), HidMapings::Num2 as u8); // 2
-        self.base_layer.insert((0, 6), HidMapings::Num3 as u8); // 3
-        self.base_layer.insert((0, 7), HidMapings::Num4 as u8); // 4
-        self.base_layer.insert((0, 4), HidMapings::Num5 as u8); // 5
+        self.base_layer.insert((0, 2), HidMapings::Escape); // ESC
+        self.base_layer.insert((0, 3), HidMapings::Num1); // 1
+        self.base_layer.insert((0, 10), HidMapings::Num2); // 2
+        self.base_layer.insert((0, 6), HidMapings::Num3); // 3
+        self.base_layer.insert((0, 7), HidMapings::Num4); // 4
+        self.base_layer.insert((0, 4), HidMapings::Num5); // 5
 
-        self.base_layer.insert((1, 2), HidMapings::Tab as u8); // TAB
-        self.base_layer.insert((1, 3), HidMapings::Q as u8); // q
-        self.base_layer.insert((1, 10), HidMapings::W as u8); // w
-        self.base_layer.insert((1, 6), HidMapings::E as u8); // e
-        self.base_layer.insert((1, 7), HidMapings::R as u8); // r
-        self.base_layer.insert((1, 4), HidMapings::T as u8); // t
+        self.base_layer.insert((1, 2), HidMapings::Tab); // TAB
+        self.base_layer.insert((1, 3), HidMapings::Q); // q
+        self.base_layer.insert((1, 10), HidMapings::W); // w
+        self.base_layer.insert((1, 6), HidMapings::E); // e
+        self.base_layer.insert((1, 7), HidMapings::R); // r
+        self.base_layer.insert((1, 4), HidMapings::T); // t
 
-        self.base_layer.insert((12, 2), HidMapings::Capslock as u8); // BACKSPACE
-        self.base_layer.insert((12, 3), HidMapings::A as u8); // a
-        self.base_layer.insert((12, 10), HidMapings::S as u8); // s
-        self.base_layer.insert((12, 6), HidMapings::D as u8); // d
-        self.base_layer.insert((12, 7), HidMapings::F as u8); // f
-        self.base_layer.insert((12, 4), HidMapings::G as u8); // g
+        self.base_layer.insert((12, 2), HidMapings::Capslock); // BACKSPACE
+        self.base_layer.insert((12, 3), HidMapings::A); // a
+        self.base_layer.insert((12, 10), HidMapings::S); // s
+        self.base_layer.insert((12, 6), HidMapings::D); // d
+        self.base_layer.insert((12, 7), HidMapings::F); // f
+        self.base_layer.insert((12, 4), HidMapings::G); // g
 
-        self.base_layer.insert((18, 2), HidMapings::No as u8); // LAYER
-        self.base_layer.insert((18, 3), HidMapings::Z as u8); // z
-        self.base_layer.insert((18, 10), HidMapings::X as u8); // x
-        self.base_layer.insert((18, 6), HidMapings::C as u8); // c
-        self.base_layer.insert((18, 7), HidMapings::V as u8); // v
-        self.base_layer.insert((18, 4), HidMapings::B as u8); // b
+        self.base_layer.insert((18, 2), HidMapings::None); // LAYER
+        self.base_layer.insert((18, 3), HidMapings::Z); // z
+        self.base_layer.insert((18, 10), HidMapings::X); // x
+        self.base_layer.insert((18, 6), HidMapings::C); // c
+        self.base_layer.insert((18, 7), HidMapings::V); // v
+        self.base_layer.insert((18, 4), HidMapings::B); // b
     }
 
     pub fn initialie_modifier_layer(&mut self) {
-        self.modifier_layer
-            .insert((19, 11), HidMapings::Control as u8); // CONTROL
-        self.modifier_layer.insert((19, 8), HidMapings::Shift as u8); // SHIFT
-        self.modifier_layer.insert((19, 9), HidMapings::Space as u8); // SPACE
+        self.modifier_layer.insert((19, 11), HidMapings::Control); // CONTROL
+        self.modifier_layer.insert((19, 8), HidMapings::Shift); // SHIFT
+        self.modifier_layer.insert((19, 9), HidMapings::Space); // SPACE
     }
 }
