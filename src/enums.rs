@@ -9,8 +9,6 @@ pub enum Layer {
 #[derive(Clone, Copy, Debug)]
 pub enum HidMapings {
     No = 0x00,
-    RollOver = 0x01,
-    PostFail = 0x02,
     Undefined = 0x03,
     A = 0x04,
     B = 0x05,
@@ -173,4 +171,6 @@ pub enum HidMapings {
     ClearAgain = 0xA2,
     Crsel = 0xA3,
     Exsel = 0xA4,
+    Shift = 0x02,
+    Control = 0x01,
 }

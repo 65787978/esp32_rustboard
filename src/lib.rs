@@ -5,9 +5,10 @@ BASE LAYER:
 PINS|  2  |  3  |  10 |  6  |  7  |  4  |           PINS|  2  |  3  |  10 |  6  |  7  |  11 |
   0 |_ESC_|__1__|__2__|__3__|__4__|__5__|             0 |__6__|__7__|__8__|__9__|__0__|__-__|
   1 |_TAB_|__q__|__w__|__e__|__r__|__t__|             1 |__y__|__u__|__i__|__o__|__p__|__[__|
- 12 |_CAP_|__a__|__s__|__d__|__f__|__g__|             12|__h__|__j__|__k__|__l__|__;__|__]__|
+ 12 |_BSP_|__a__|__s__|__d__|__f__|__g__|             12|__h__|__j__|__k__|__l__|__;__|__]__|
  18 |_____|__z__|__x__|__c__|__v__|__b__|             18|__n__|__m__|__,__|__.__|__/__|__\__|
- 19 |_____|_____|_LYR_|_CTL_|_SFT_|_ENT_|             19|_SPC_|_BSP_|_CTL_|_LYR_|_____|_____|
+
+ 19 |_____|_____|_LYR_|_CTL_|_SFT_|_SPC_|             19|_ENT_|_CTL_|_LYR_|_____|_____|_____|
 
 *********************************************************************************************
 SHIFT LAYER:
@@ -39,15 +40,22 @@ pub mod ble_keyboard;
 pub mod enums;
 
 pub struct KeyMatrix<'a> {
-    pub rows: [PinDriver<'a, AnyOutputPin, Output>; 5],
+    pub rows: [PinDriver<'a, AnyOutputPin, Output>; 4],
     pub cols: [PinDriver<'a, AnyInputPin, Input>; 6],
 }
+
+pub struct ModifierMatrix<'a> {
+    pub rows: [PinDriver<'a, AnyOutputPin, Output>; 1],
+    pub cols: [PinDriver<'a, AnyInputPin, Input>; 3],
+}
+
 pub struct KeyboardSide<'a> {
     // pub base_layer: HashMap<(i32, i32), u8>,
     // pub shift_layer: HashMap<(i32, i32), u8>,
     // pub upper_layer: HashMap<(i32, i32), u8>,
     pub layer: Layer,
     pub key_matrix: KeyMatrix<'a>,
+    pub modifier_matrix: ModifierMatrix<'a>,
 }
 
 impl KeyboardSide<'_> {
@@ -65,7 +73,6 @@ impl KeyboardSide<'_> {
                     PinDriver::output(peripherals.pins.gpio1.downgrade_output()).unwrap(),
                     PinDriver::output(peripherals.pins.gpio12.downgrade_output()).unwrap(),
                     PinDriver::output(peripherals.pins.gpio18.downgrade_output()).unwrap(),
-                    PinDriver::output(peripherals.pins.gpio19.downgrade_output()).unwrap(),
                 ],
                 cols: [
                     PinDriver::input(peripherals.pins.gpio2.downgrade_input()).unwrap(),
@@ -76,143 +83,153 @@ impl KeyboardSide<'_> {
                     PinDriver::input(peripherals.pins.gpio4.downgrade_input()).unwrap(),
                 ],
             },
+            modifier_matrix: ModifierMatrix {
+                rows: [PinDriver::output(peripherals.pins.gpio19.downgrade_output()).unwrap()],
+                cols: [
+                    PinDriver::input(peripherals.pins.gpio11.downgrade_input()).unwrap(),
+                    PinDriver::input(peripherals.pins.gpio8.downgrade_input()).unwrap(),
+                    PinDriver::input(peripherals.pins.gpio9.downgrade_input()).unwrap(),
+                ],
+            },
         }
+
+        // pub fn initialize_layers(&mut self) {
+        //     self.initialie_base_layer();
+        //     // self.initialie_shift_layer();
+        //     self.initialie_upper_layer();
+        // }
+
+        // fn initialie_base_layer(&mut self) {
+        //     self.base_layer.insert((0, 2), HidMapings::Escape as u8); // ESC
+        //     self.base_layer.insert((0, 3), HidMapings::Num1 as u8); // 1
+        //     self.base_layer.insert((0, 10), HidMapings::Num2 as u8); // 2
+        //     self.base_layer.insert((0, 6), HidMapings::Num3 as u8); // 3
+        //     self.base_layer.insert((0, 7), HidMapings::Num4 as u8); // 4
+        //     self.base_layer.insert((0, 4), HidMapings::Num5 as u8); // 5
+
+        //     self.base_layer.insert((1, 2), HidMapings::Tab as u8); // TAB
+        //     self.base_layer.insert((1, 3), HidMapings::Q as u8); // q
+        //     self.base_layer.insert((1, 10), HidMapings::W as u8); // w
+        //     self.base_layer.insert((1, 6), HidMapings::E as u8); // e
+        //     self.base_layer.insert((1, 7), HidMapings::R as u8); // r
+        //     self.base_layer.insert((1, 4), HidMapings::T as u8); // t
+
+        //     self.base_layer.insert((12, 2), HidMapings::Capslock as u8); // CAP
+        //     self.base_layer.insert((12, 3), HidMapings::A as u8); // a
+        //     self.base_layer.insert((12, 10), HidMapings::S as u8); // s
+        //     self.base_layer.insert((12, 6), HidMapings::D as u8); // d
+        //     self.base_layer.insert((12, 7), HidMapings::F as u8); // f
+        //     self.base_layer.insert((12, 4), HidMapings::G as u8); // g
+
+        //     self.base_layer.insert((18, 2), HidMapings::No as u8); //
+        //     self.base_layer.insert((18, 3), HidMapings::Z as u8); // z
+        //     self.base_layer.insert((18, 10), HidMapings::X as u8); // x
+        //     self.base_layer.insert((18, 6), HidMapings::C as u8); // c
+        //     self.base_layer.insert((18, 7), HidMapings::V as u8); // v
+        //     self.base_layer.insert((18, 4), HidMapings::B as u8); // b
+
+        //     self.base_layer.insert((19, 2), HidMapings::No as u8); //
+        //     self.base_layer.insert((19, 3), HidMapings::No as u8); //
+        //     self.base_layer.insert((19, 10), HidMapings::No as u8); // LAYER
+        //     self.base_layer.insert((19, 6), HidMapings::No as u8); // CONTROL
+        //     self.base_layer.insert((19, 7), HidMapings::No as u8); // SHIFT
+        //     self.base_layer.insert((19, 4), HidMapings::Enter as u8); // ENTER
+        // }
+
+        // fn initialie_shift_layer(&mut self) {
+        //     self.shift_layer.insert((0, 2), HidMapings::Escape as u8); // ESC
+        //     self.shift_layer.insert((0, 3), HidMapings::No as u8); // !
+        //     self.shift_layer.insert((0, 10), HidMapings::No as u8); // @
+        //     self.shift_layer.insert((0, 6), HidMapings::No as u8); // #
+        //     self.shift_layer.insert((0, 7), HidMapings::No as u8); // $
+        //     self.shift_layer.insert((0, 4), HidMapings::No as u8); // %
+
+        //     self.shift_layer.insert((1, 2), HidMapings::Tab as u8); // TAB
+        //     self.shift_layer.insert((1, 3), HidMapings::UpperQ as u8); // Q
+        //     self.shift_layer.insert((1, 10), HidMapings::UpperW as u8); // W
+        //     self.shift_layer.insert((1, 6), HidMapings::UpperE as u8); // E
+        //     self.shift_layer.insert((1, 7), HidMapings::UpperR as u8); // R
+        //     self.shift_layer.insert((1, 4), HidMapings::UpperT as u8); // T
+
+        //     self.shift_layer.insert((12, 2), HidMapings::Capslock as u8); // CAPSLOCK
+        //     self.shift_layer.insert((12, 3), HidMapings::UpperA as u8); // A
+        //     self.shift_layer.insert((12, 10), HidMapings::UpperS as u8); // S
+        //     self.shift_layer.insert((12, 6), HidMapings::UpperD as u8); // D
+        //     self.shift_layer.insert((12, 7), HidMapings::UpperF as u8); // F
+        //     self.shift_layer.insert((12, 4), HidMapings::UpperG as u8); // G
+
+        //     self.shift_layer.insert((18, 2), HidMapings::No as u8); //
+        //     self.shift_layer.insert((18, 3), HidMapings::UpperZ as u8); // Z
+        //     self.shift_layer.insert((18, 10), HidMapings::UpperX as u8); // X
+        //     self.shift_layer.insert((18, 6), HidMapings::UpperC as u8); // C
+        //     self.shift_layer.insert((18, 7), HidMapings::UpperV as u8); // V
+        //     self.shift_layer.insert((18, 4), HidMapings::UpperB as u8); // B
+
+        //     self.shift_layer.insert((19, 2), HidMapings::No as u8); //
+        //     self.shift_layer.insert((19, 3), HidMapings::No as u8); //
+        //     self.shift_layer.insert((19, 10), HidMapings::No as u8); // LAYER
+        //     self.shift_layer.insert((19, 6), HidMapings::No as u8); // CONTROL
+        //     self.shift_layer.insert((19, 7), HidMapings::No as u8); // SHIFT
+        //     self.shift_layer.insert((19, 4), HidMapings::Enter as u8); // ENTER
+        // }
+
+        // fn initialie_upper_layer(&mut self) {
+        //     self.upper_layer.insert((0, 2), HidMapings::Escape as u8); // ESC
+        //     self.upper_layer.insert((0, 3), HidMapings::No as u8); //
+        //     self.upper_layer.insert((0, 10), HidMapings::No as u8); //
+        //     self.upper_layer.insert((0, 6), HidMapings::No as u8); //
+        //     self.upper_layer.insert((0, 7), HidMapings::No as u8); //
+        //     self.upper_layer.insert((0, 4), HidMapings::No as u8); //
+
+        //     self.upper_layer.insert((1, 2), HidMapings::Tab as u8); // TAB
+        //     self.upper_layer.insert((1, 3), HidMapings::No as u8); //
+        //     self.upper_layer.insert((1, 10), HidMapings::Up as u8); // UP
+        //     self.upper_layer.insert((1, 6), HidMapings::No as u8); //
+        //     self.upper_layer.insert((1, 7), HidMapings::No as u8); //
+        //     self.upper_layer.insert((1, 4), HidMapings::No as u8); //
+
+        //     self.upper_layer.insert((12, 2), HidMapings::Capslock as u8); // CAPSLOCK
+        //     self.upper_layer.insert((12, 3), HidMapings::Left as u8); // LEFT
+        //     self.upper_layer.insert((12, 10), HidMapings::Down as u8); // DOWN
+        //     self.upper_layer.insert((12, 6), HidMapings::Right as u8); // RIGHT
+        //     self.upper_layer.insert((12, 7), HidMapings::No as u8); //
+        //     self.upper_layer.insert((12, 4), HidMapings::No as u8); //
+
+        //     self.upper_layer.insert((18, 2), HidMapings::No as u8); //
+        //     self.upper_layer.insert((18, 3), HidMapings::No as u8); //
+        //     self.upper_layer.insert((18, 10), HidMapings::No as u8); //
+        //     self.upper_layer.insert((18, 6), HidMapings::No as u8); //
+        //     self.upper_layer.insert((18, 7), HidMapings::No as u8); //
+        //     self.upper_layer.insert((18, 4), HidMapings::No as u8); //
+
+        //     self.upper_layer.insert((19, 2), HidMapings::No as u8); //
+        //     self.upper_layer.insert((19, 3), HidMapings::No as u8); //
+        //     self.upper_layer.insert((19, 10), HidMapings::No as u8); // LAYER
+        //     self.upper_layer.insert((19, 6), HidMapings::No as u8); // CONTROL
+        //     self.upper_layer.insert((19, 7), HidMapings::No as u8); // SHIFT
+        //     self.upper_layer.insert((19, 4), HidMapings::Enter as u8); // ENTER
+        // }
+
+        // pub fn provide_value(&mut self) -> Option<&u8> {
+        //     match self.layer {
+        //         Layer::Base => self.base_layer.get(&self.pins_active),
+        //         Layer::Shift => self.shift_layer.get(&self.pins_active),
+        //         Layer::Upper => self.upper_layer.get(&self.pins_active),
+        //     }
+        // }
     }
-
-    // pub fn initialize_layers(&mut self) {
-    //     self.initialie_base_layer();
-    //     // self.initialie_shift_layer();
-    //     self.initialie_upper_layer();
-    // }
-
-    // fn initialie_base_layer(&mut self) {
-    //     self.base_layer.insert((0, 2), HidMapings::Escape as u8); // ESC
-    //     self.base_layer.insert((0, 3), HidMapings::Num1 as u8); // 1
-    //     self.base_layer.insert((0, 10), HidMapings::Num2 as u8); // 2
-    //     self.base_layer.insert((0, 6), HidMapings::Num3 as u8); // 3
-    //     self.base_layer.insert((0, 7), HidMapings::Num4 as u8); // 4
-    //     self.base_layer.insert((0, 4), HidMapings::Num5 as u8); // 5
-
-    //     self.base_layer.insert((1, 2), HidMapings::Tab as u8); // TAB
-    //     self.base_layer.insert((1, 3), HidMapings::Q as u8); // q
-    //     self.base_layer.insert((1, 10), HidMapings::W as u8); // w
-    //     self.base_layer.insert((1, 6), HidMapings::E as u8); // e
-    //     self.base_layer.insert((1, 7), HidMapings::R as u8); // r
-    //     self.base_layer.insert((1, 4), HidMapings::T as u8); // t
-
-    //     self.base_layer.insert((12, 2), HidMapings::Capslock as u8); // CAP
-    //     self.base_layer.insert((12, 3), HidMapings::A as u8); // a
-    //     self.base_layer.insert((12, 10), HidMapings::S as u8); // s
-    //     self.base_layer.insert((12, 6), HidMapings::D as u8); // d
-    //     self.base_layer.insert((12, 7), HidMapings::F as u8); // f
-    //     self.base_layer.insert((12, 4), HidMapings::G as u8); // g
-
-    //     self.base_layer.insert((18, 2), HidMapings::No as u8); //
-    //     self.base_layer.insert((18, 3), HidMapings::Z as u8); // z
-    //     self.base_layer.insert((18, 10), HidMapings::X as u8); // x
-    //     self.base_layer.insert((18, 6), HidMapings::C as u8); // c
-    //     self.base_layer.insert((18, 7), HidMapings::V as u8); // v
-    //     self.base_layer.insert((18, 4), HidMapings::B as u8); // b
-
-    //     self.base_layer.insert((19, 2), HidMapings::No as u8); //
-    //     self.base_layer.insert((19, 3), HidMapings::No as u8); //
-    //     self.base_layer.insert((19, 10), HidMapings::No as u8); // LAYER
-    //     self.base_layer.insert((19, 6), HidMapings::No as u8); // CONTROL
-    //     self.base_layer.insert((19, 7), HidMapings::No as u8); // SHIFT
-    //     self.base_layer.insert((19, 4), HidMapings::Enter as u8); // ENTER
-    // }
-
-    // fn initialie_shift_layer(&mut self) {
-    //     self.shift_layer.insert((0, 2), HidMapings::Escape as u8); // ESC
-    //     self.shift_layer.insert((0, 3), HidMapings::No as u8); // !
-    //     self.shift_layer.insert((0, 10), HidMapings::No as u8); // @
-    //     self.shift_layer.insert((0, 6), HidMapings::No as u8); // #
-    //     self.shift_layer.insert((0, 7), HidMapings::No as u8); // $
-    //     self.shift_layer.insert((0, 4), HidMapings::No as u8); // %
-
-    //     self.shift_layer.insert((1, 2), HidMapings::Tab as u8); // TAB
-    //     self.shift_layer.insert((1, 3), HidMapings::UpperQ as u8); // Q
-    //     self.shift_layer.insert((1, 10), HidMapings::UpperW as u8); // W
-    //     self.shift_layer.insert((1, 6), HidMapings::UpperE as u8); // E
-    //     self.shift_layer.insert((1, 7), HidMapings::UpperR as u8); // R
-    //     self.shift_layer.insert((1, 4), HidMapings::UpperT as u8); // T
-
-    //     self.shift_layer.insert((12, 2), HidMapings::Capslock as u8); // CAPSLOCK
-    //     self.shift_layer.insert((12, 3), HidMapings::UpperA as u8); // A
-    //     self.shift_layer.insert((12, 10), HidMapings::UpperS as u8); // S
-    //     self.shift_layer.insert((12, 6), HidMapings::UpperD as u8); // D
-    //     self.shift_layer.insert((12, 7), HidMapings::UpperF as u8); // F
-    //     self.shift_layer.insert((12, 4), HidMapings::UpperG as u8); // G
-
-    //     self.shift_layer.insert((18, 2), HidMapings::No as u8); //
-    //     self.shift_layer.insert((18, 3), HidMapings::UpperZ as u8); // Z
-    //     self.shift_layer.insert((18, 10), HidMapings::UpperX as u8); // X
-    //     self.shift_layer.insert((18, 6), HidMapings::UpperC as u8); // C
-    //     self.shift_layer.insert((18, 7), HidMapings::UpperV as u8); // V
-    //     self.shift_layer.insert((18, 4), HidMapings::UpperB as u8); // B
-
-    //     self.shift_layer.insert((19, 2), HidMapings::No as u8); //
-    //     self.shift_layer.insert((19, 3), HidMapings::No as u8); //
-    //     self.shift_layer.insert((19, 10), HidMapings::No as u8); // LAYER
-    //     self.shift_layer.insert((19, 6), HidMapings::No as u8); // CONTROL
-    //     self.shift_layer.insert((19, 7), HidMapings::No as u8); // SHIFT
-    //     self.shift_layer.insert((19, 4), HidMapings::Enter as u8); // ENTER
-    // }
-
-    // fn initialie_upper_layer(&mut self) {
-    //     self.upper_layer.insert((0, 2), HidMapings::Escape as u8); // ESC
-    //     self.upper_layer.insert((0, 3), HidMapings::No as u8); //
-    //     self.upper_layer.insert((0, 10), HidMapings::No as u8); //
-    //     self.upper_layer.insert((0, 6), HidMapings::No as u8); //
-    //     self.upper_layer.insert((0, 7), HidMapings::No as u8); //
-    //     self.upper_layer.insert((0, 4), HidMapings::No as u8); //
-
-    //     self.upper_layer.insert((1, 2), HidMapings::Tab as u8); // TAB
-    //     self.upper_layer.insert((1, 3), HidMapings::No as u8); //
-    //     self.upper_layer.insert((1, 10), HidMapings::Up as u8); // UP
-    //     self.upper_layer.insert((1, 6), HidMapings::No as u8); //
-    //     self.upper_layer.insert((1, 7), HidMapings::No as u8); //
-    //     self.upper_layer.insert((1, 4), HidMapings::No as u8); //
-
-    //     self.upper_layer.insert((12, 2), HidMapings::Capslock as u8); // CAPSLOCK
-    //     self.upper_layer.insert((12, 3), HidMapings::Left as u8); // LEFT
-    //     self.upper_layer.insert((12, 10), HidMapings::Down as u8); // DOWN
-    //     self.upper_layer.insert((12, 6), HidMapings::Right as u8); // RIGHT
-    //     self.upper_layer.insert((12, 7), HidMapings::No as u8); //
-    //     self.upper_layer.insert((12, 4), HidMapings::No as u8); //
-
-    //     self.upper_layer.insert((18, 2), HidMapings::No as u8); //
-    //     self.upper_layer.insert((18, 3), HidMapings::No as u8); //
-    //     self.upper_layer.insert((18, 10), HidMapings::No as u8); //
-    //     self.upper_layer.insert((18, 6), HidMapings::No as u8); //
-    //     self.upper_layer.insert((18, 7), HidMapings::No as u8); //
-    //     self.upper_layer.insert((18, 4), HidMapings::No as u8); //
-
-    //     self.upper_layer.insert((19, 2), HidMapings::No as u8); //
-    //     self.upper_layer.insert((19, 3), HidMapings::No as u8); //
-    //     self.upper_layer.insert((19, 10), HidMapings::No as u8); // LAYER
-    //     self.upper_layer.insert((19, 6), HidMapings::No as u8); // CONTROL
-    //     self.upper_layer.insert((19, 7), HidMapings::No as u8); // SHIFT
-    //     self.upper_layer.insert((19, 4), HidMapings::Enter as u8); // ENTER
-    // }
-
-    // pub fn provide_value(&mut self) -> Option<&u8> {
-    //     match self.layer {
-    //         Layer::Base => self.base_layer.get(&self.pins_active),
-    //         Layer::Shift => self.shift_layer.get(&self.pins_active),
-    //         Layer::Upper => self.upper_layer.get(&self.pins_active),
-    //     }
-    // }
 }
 
 pub struct Layers {
     pub base_layer: HashMap<(i32, i32), u8>,
+    pub modifier_layer: HashMap<(i32, i32), u8>,
 }
 
 impl Layers {
     pub fn new() -> Self {
         Self {
             base_layer: HashMap::new(),
+            modifier_layer: HashMap::new(),
         }
     }
 
@@ -231,25 +248,25 @@ impl Layers {
         self.base_layer.insert((1, 7), HidMapings::R as u8); // r
         self.base_layer.insert((1, 4), HidMapings::T as u8); // t
 
-        self.base_layer.insert((12, 2), HidMapings::Capslock as u8); // CAP
+        self.base_layer.insert((12, 2), HidMapings::Capslock as u8); // BACKSPACE
         self.base_layer.insert((12, 3), HidMapings::A as u8); // a
         self.base_layer.insert((12, 10), HidMapings::S as u8); // s
         self.base_layer.insert((12, 6), HidMapings::D as u8); // d
         self.base_layer.insert((12, 7), HidMapings::F as u8); // f
         self.base_layer.insert((12, 4), HidMapings::G as u8); // g
 
-        self.base_layer.insert((18, 2), HidMapings::No as u8); //
+        self.base_layer.insert((18, 2), HidMapings::No as u8); // LAYER
         self.base_layer.insert((18, 3), HidMapings::Z as u8); // z
         self.base_layer.insert((18, 10), HidMapings::X as u8); // x
         self.base_layer.insert((18, 6), HidMapings::C as u8); // c
         self.base_layer.insert((18, 7), HidMapings::V as u8); // v
         self.base_layer.insert((18, 4), HidMapings::B as u8); // b
+    }
 
-        self.base_layer.insert((19, 2), HidMapings::No as u8); //
-        self.base_layer.insert((19, 3), HidMapings::No as u8); //
-        self.base_layer.insert((19, 10), HidMapings::No as u8); // LAYER
-        self.base_layer.insert((19, 6), HidMapings::No as u8); // CONTROL
-        self.base_layer.insert((19, 7), HidMapings::No as u8); // SHIFT
-        self.base_layer.insert((19, 4), HidMapings::Enter as u8); // ENTER
+    pub fn initialie_modifier_layer(&mut self) {
+        self.modifier_layer
+            .insert((19, 11), HidMapings::Control as u8); // CONTROL
+        self.modifier_layer.insert((19, 8), HidMapings::Shift as u8); // SHIFT
+        self.modifier_layer.insert((19, 9), HidMapings::Space as u8); // SPACE
     }
 }

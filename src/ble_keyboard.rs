@@ -79,10 +79,10 @@ pub const SHIFT: u8 = 0x02;
 pub const ASCII_MAP: &[u8] = &[];
 
 #[repr(packed)]
-struct KeyReport {
-    modifiers: u8,
-    reserved: u8,
-    keys: [u8; 6],
+pub struct KeyReport {
+    pub modifiers: u8,
+    pub reserved: u8,
+    pub keys: [u8; 6],
 }
 
 pub struct Keyboard {
@@ -90,7 +90,7 @@ pub struct Keyboard {
     input_keyboard: Arc<Mutex<BLECharacteristic>>,
     output_keyboard: Arc<Mutex<BLECharacteristic>>,
     input_media_keys: Arc<Mutex<BLECharacteristic>>,
-    key_report: KeyReport,
+    pub key_report: KeyReport,
 }
 
 impl Keyboard {
