@@ -60,10 +60,12 @@ async fn ble_transmit() -> ! {
     loop {
         /* check if connected */
         if keyboard.connected() {
-            while ATOMIC_KEY_BOOL.load(Ordering::Relaxed)
-                || ATOMIC_MODIFIER_BOOL.load(Ordering::Relaxed)
-            {
-                /* check if a key has been pressed */
+            /* wait 10 ms */
+            delay_ms(1).await;
+
+            /* check if a key has been pressed */
+            if ATOMIC_KEY_BOOL.load(Ordering::Relaxed) {
+                /* get valid key */
                 if let Some(valid_key) = layers.base_layer.get(&(
                     ATOMIC_KEY_ROW.load(Ordering::Relaxed),
                     ATOMIC_KEY_COL.load(Ordering::Relaxed),
@@ -71,11 +73,15 @@ async fn ble_transmit() -> ! {
                     /* set key */
                     key = *valid_key;
                 } else {
-                    /* reset key */
                     key = HidMapings::None;
                 }
 
-                /* check if a modifier key has been pressed */
+                /* reset bool */
+                ATOMIC_KEY_BOOL.store(false, Ordering::Relaxed);
+            }
+
+            if ATOMIC_MODIFIER_BOOL.load(Ordering::Relaxed) {
+                /* get valid modifier key */
                 if let Some(valid_modifier_key) = layers.modifier_layer.get(&(
                     ATOMIC_MODIFIER_ROW.load(Ordering::Relaxed),
                     ATOMIC_MODIFIER_COL.load(Ordering::Relaxed),
@@ -83,7 +89,6 @@ async fn ble_transmit() -> ! {
                     /* set modifier */
                     modifier = *valid_modifier_key;
                 } else {
-                    /* reset modifier */
                     modifier = HidMapings::None;
                 }
 
@@ -91,18 +96,22 @@ async fn ble_transmit() -> ! {
                 keyboard.press(key, modifier);
             }
 
-            /* send release key */
-            keyboard.release();
+            if (key != HidMapings::None) || (modifier != HidMapings::None) {
+                /* send press key */
+                keyboard.press(key, modifier);
+                keyboard.release();
 
-            /* Delay so wdt doesn't kick in */
-            delay_ms(1).await;
+                /* reset key and modifier */
+                key = HidMapings::None;
+                modifier = HidMapings::None;
+            }
         }
+        delay_ms(1).await;
     }
 }
 
 async fn key_matrix(matrix: &mut KeyMatrix<'_>) -> ! {
-    /* set values only once */
-    let mut set_values_flag: bool = true;
+    let mut store_values_flag: bool = true;
 
     loop {
         /* check rows and cols */
@@ -114,29 +123,18 @@ async fn key_matrix(matrix: &mut KeyMatrix<'_>) -> ! {
             for col in matrix.cols.iter_mut() {
                 /* if a col is high */
                 while col.is_high() {
-                    /* set values only once */
-                    if set_values_flag {
+                    if store_values_flag {
                         ATOMIC_KEY_ROW.store(row.pin(), Ordering::Relaxed);
                         ATOMIC_KEY_COL.store(col.pin(), Ordering::Relaxed);
 
                         /* set bool */
                         ATOMIC_KEY_BOOL.store(true, Ordering::Relaxed);
-
-                        set_values_flag = false;
+                        store_values_flag = false;
                     }
 
-                    /* Delay so wdt doesn't kick in */
                     delay_ms(1).await;
                 }
-
-                /* reset col and row */
-                ATOMIC_KEY_ROW.store(0, Ordering::Relaxed);
-                ATOMIC_KEY_COL.store(0, Ordering::Relaxed);
-                /* set bool */
-                ATOMIC_KEY_BOOL.store(false, Ordering::Relaxed);
-
-                /* reset flag */
-                set_values_flag = true;
+                store_values_flag = true;
             }
 
             /* set row to low */
@@ -149,8 +147,7 @@ async fn key_matrix(matrix: &mut KeyMatrix<'_>) -> ! {
 }
 
 async fn modifier_matrix(matrix: &mut ModifierMatrix<'_>) -> ! {
-    /* set values only once */
-    let mut set_values_flag: bool = true;
+    let mut store_values_flag: bool = true;
 
     /* set modifier row to always high */
     matrix.rows[0].set_high().unwrap();
@@ -161,29 +158,17 @@ async fn modifier_matrix(matrix: &mut ModifierMatrix<'_>) -> ! {
             /* if a col is high */
 
             while col.is_high() {
-                /* set values only once */
-                if set_values_flag {
+                if store_values_flag {
                     ATOMIC_MODIFIER_ROW.store(matrix.rows[0].pin(), Ordering::Relaxed);
                     ATOMIC_MODIFIER_COL.store(col.pin(), Ordering::Relaxed);
 
                     /* set bool */
                     ATOMIC_MODIFIER_BOOL.store(true, Ordering::Relaxed);
-
-                    set_values_flag = false;
+                    store_values_flag = false;
                 }
-                /* delay so wdt doesn't trigger */
                 delay_ms(1).await;
             }
-
-            /* reset col and row */
-            ATOMIC_MODIFIER_ROW.store(0, Ordering::Relaxed);
-            ATOMIC_MODIFIER_COL.store(0, Ordering::Relaxed);
-
-            /* set bool */
-            ATOMIC_MODIFIER_BOOL.store(false, Ordering::Relaxed);
-
-            /* reset flag */
-            set_values_flag = true;
+            store_values_flag = true;
         }
 
         /* Wait 1 ms */

@@ -6,7 +6,7 @@ pub enum Layer {
     Upper,
 }
 /* Scan codes - HID Keyboard: https://gist.github.com/MightyPork/6da26e382a7ad91b5496ee55fdc73db2 */
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum HidMapings {
     None = 0x00,
     Undefined = 0x03,
