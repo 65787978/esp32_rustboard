@@ -54,8 +54,8 @@ async fn ble_transmit() -> ! {
     layers.initialie_base_layer();
     layers.initialie_modifier_layer();
 
-    let mut key: HidMapings;
-    let mut modifier: HidMapings;
+    let mut key: HidMapings = HidMapings::None;
+    let mut modifier: HidMapings = HidMapings::None;
 
     loop {
         /* check if connected */
@@ -91,9 +91,8 @@ async fn ble_transmit() -> ! {
                 } else {
                     modifier = HidMapings::None;
                 }
-
-                /* send press key */
-                keyboard.press(key, modifier);
+                /* set bool */
+                ATOMIC_MODIFIER_BOOL.store(false, Ordering::Relaxed);
             }
 
             if (key != HidMapings::None) || (modifier != HidMapings::None) {
@@ -106,10 +105,10 @@ async fn ble_transmit() -> ! {
                 modifier = HidMapings::None;
             }
         }
+
         delay_ms(1).await;
     }
 }
-
 async fn key_matrix(matrix: &mut KeyMatrix<'_>) -> ! {
     let mut store_values_flag: bool = true;
 
@@ -156,7 +155,6 @@ async fn modifier_matrix(matrix: &mut ModifierMatrix<'_>) -> ! {
         /* check if a col is high */
         for col in matrix.cols.iter_mut() {
             /* if a col is high */
-
             while col.is_high() {
                 if store_values_flag {
                     ATOMIC_MODIFIER_ROW.store(matrix.rows[0].pin(), Ordering::Relaxed);
@@ -170,7 +168,6 @@ async fn modifier_matrix(matrix: &mut ModifierMatrix<'_>) -> ! {
             }
             store_values_flag = true;
         }
-
         /* Wait 1 ms */
         delay_ms(1).await;
     }
