@@ -54,6 +54,7 @@ async fn ble_transmit() -> ! {
     layers.initialie_base_layer();
     layers.initialie_modifier_layer();
 
+    /* initialize key and modifier variables */
     let mut key: HidMapings = HidMapings::None;
     let mut modifier: HidMapings = HidMapings::None;
 
@@ -73,6 +74,7 @@ async fn ble_transmit() -> ! {
                     /* set key */
                     key = *valid_key;
                 } else {
+                    /* reset key */
                     key = HidMapings::None;
                 }
 
@@ -80,6 +82,7 @@ async fn ble_transmit() -> ! {
                 ATOMIC_KEY_BOOL.store(false, Ordering::Relaxed);
             }
 
+            /* check if a modifier has been pressed */
             if ATOMIC_MODIFIER_BOOL.load(Ordering::Relaxed) {
                 /* get valid modifier key */
                 if let Some(valid_modifier_key) = layers.modifier_layer.get(&(
@@ -89,12 +92,14 @@ async fn ble_transmit() -> ! {
                     /* set modifier */
                     modifier = *valid_modifier_key;
                 } else {
+                    /* reset modifier */
                     modifier = HidMapings::None;
                 }
                 /* set bool */
                 ATOMIC_MODIFIER_BOOL.store(false, Ordering::Relaxed);
             }
 
+            /* check if key or modifier has been pressed */
             if (key != HidMapings::None) || (modifier != HidMapings::None) {
                 /* send press key */
                 keyboard.press(key, modifier);
@@ -106,10 +111,12 @@ async fn ble_transmit() -> ! {
             }
         }
 
+        /* Delay so wdt doesn't kick in */
         delay_ms(1).await;
     }
 }
 async fn key_matrix(matrix: &mut KeyMatrix<'_>) -> ! {
+    /* flag to store values */
     let mut store_values_flag: bool = true;
 
     loop {
@@ -130,22 +137,25 @@ async fn key_matrix(matrix: &mut KeyMatrix<'_>) -> ! {
                         ATOMIC_KEY_BOOL.store(true, Ordering::Relaxed);
                         store_values_flag = false;
                     }
-
+                    /* Delay so wdt doesn't kick in */
                     delay_ms(1).await;
                 }
+
+                /* reset bool */
                 store_values_flag = true;
             }
 
             /* set row to low */
             row.set_low().unwrap();
 
-            /* Wait 1 ms */
+            /* Delay so wdt doesn't kick in */
             delay_ms(1).await;
         }
     }
 }
 
 async fn modifier_matrix(matrix: &mut ModifierMatrix<'_>) -> ! {
+    /* flag to store values */
     let mut store_values_flag: bool = true;
 
     /* set modifier row to always high */
@@ -162,13 +172,19 @@ async fn modifier_matrix(matrix: &mut ModifierMatrix<'_>) -> ! {
 
                     /* set bool */
                     ATOMIC_MODIFIER_BOOL.store(true, Ordering::Relaxed);
+
+                    /* reset bool */
                     store_values_flag = false;
                 }
+
+                /* Delay so wdt doesn't kick in */
                 delay_ms(1).await;
             }
+
+            /* reset bool */
             store_values_flag = true;
         }
-        /* Wait 1 ms */
+        /* Delay so wdt doesn't kick in */
         delay_ms(1).await;
     }
 }
