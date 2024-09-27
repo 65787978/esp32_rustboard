@@ -4,22 +4,11 @@ to flash: espflash flash ./target/riscv32imc-esp-espidf/release/esp32-rust-split
 */
 
 use crate::ble_keyboard::*;
-use crate::delay::delay_ms;
 
 use anyhow;
-use embassy_futures::select::select3;
 use enums::HidMapings;
 use esp32_rust_split_keyboard::*;
-use esp_idf_hal::task::block_on;
-use std::sync::atomic::{AtomicBool, AtomicI32, Ordering};
-
-static ATOMIC_KEY_ROW: AtomicI32 = AtomicI32::new(0);
-static ATOMIC_KEY_COL: AtomicI32 = AtomicI32::new(0);
-static ATOMIC_KEY_BOOL: AtomicBool = AtomicBool::new(false);
-
-static ATOMIC_MODIFIER_ROW: AtomicI32 = AtomicI32::new(0);
-static ATOMIC_MODIFIER_COL: AtomicI32 = AtomicI32::new(0);
-static ATOMIC_MODIFIER_BOOL: AtomicBool = AtomicBool::new(false);
+use esp_idf_svc::hal::delay::FreeRtos;
 
 fn main() -> anyhow::Result<()> {
     esp_idf_svc::sys::link_patches();
@@ -27,164 +16,79 @@ fn main() -> anyhow::Result<()> {
     // Bind the log crate to the ESP Logging facilities
     esp_idf_svc::log::EspLogger::initialize_default();
 
+    /* initialize BLE */
+    let mut ble_connection = Keyboard::new().unwrap();
+
+    log::info!("BLE Initialized...");
+
     /* initialize matrix */
-    let mut keyboard_left_side = KeyboardSide::new();
+    let mut keyboard = KeyboardSide::new();
+    keyboard.initialize_base_layer();
+
+    log::info!("Keyboard Initialized...");
+
+    /* initialize bool matrix */
+    let mut bool_matrix: [[bool; COLS]; ROWS] = [[false; COLS]; ROWS];
 
     /* Run the tasks in parallel */
-    block_on(async {
-        select3(
-            ble_transmit(),
-            key_matrix(&mut keyboard_left_side.key_matrix),
-            modifier_matrix(&mut keyboard_left_side.modifier_matrix),
-        )
-        .await;
-    });
+    loop {
+        if ble_connection.connected() {
+            poll_matrix(&mut keyboard.key_matrix, &mut bool_matrix);
+        }
+    }
 
     Ok(())
 }
 
-async fn ble_transmit() -> ! {
-    /* initialize BLE */
-    let mut keyboard = Keyboard::new().unwrap();
-
-    println!("BLE Initialized...");
-
-    /* initialize layers */
-    let mut layers = Layers::new();
-    layers.initialie_base_layer();
-    layers.initialie_modifier_layer();
-
-    /* initialize key and modifier variables */
-    let mut key: HidMapings = HidMapings::None;
-    let mut modifier: HidMapings = HidMapings::None;
-
+fn ble_transmit() -> ! {
     loop {
         /* check if connected */
         if keyboard.connected() {
             /* wait 10 ms */
-            delay_ms(1).await;
+            FreeRtos::delay_ms(1);
 
-            /* check if a key has been pressed */
-            if ATOMIC_KEY_BOOL.load(Ordering::Relaxed) {
-                /* get valid key */
-                if let Some(valid_key) = layers.base_layer.get(&(
-                    ATOMIC_KEY_ROW.load(Ordering::Relaxed),
-                    ATOMIC_KEY_COL.load(Ordering::Relaxed),
-                )) {
-                    /* set key */
-                    key = *valid_key;
-                } else {
-                    /* reset key */
-                    key = HidMapings::None;
-                }
-
-                /* reset bool */
-                ATOMIC_KEY_BOOL.store(false, Ordering::Relaxed);
-            }
-
-            /* check if a modifier has been pressed */
-            if ATOMIC_MODIFIER_BOOL.load(Ordering::Relaxed) {
-                /* get valid modifier key */
-                if let Some(valid_modifier_key) = layers.modifier_layer.get(&(
-                    ATOMIC_MODIFIER_ROW.load(Ordering::Relaxed),
-                    ATOMIC_MODIFIER_COL.load(Ordering::Relaxed),
-                )) {
-                    /* set modifier */
-                    modifier = *valid_modifier_key;
-                } else {
-                    /* reset modifier */
-                    modifier = HidMapings::None;
-                }
-                /* set bool */
-                ATOMIC_MODIFIER_BOOL.store(false, Ordering::Relaxed);
-            }
-
-            /* check if key or modifier has been pressed */
-            if (key != HidMapings::None) || (modifier != HidMapings::None) {
-                /* send press key */
-                keyboard.press(key, modifier);
-                keyboard.release();
-
-                /* reset key and modifier */
-                key = HidMapings::None;
-                modifier = HidMapings::None;
-            }
+            /* send press key */
+            keyboard.press(key, modifier);
+            keyboard.release();
         }
 
         /* Delay so wdt doesn't kick in */
-        delay_ms(1).await;
+        FreeRtos::delay_ms(1);
     }
 }
-async fn key_matrix(matrix: &mut KeyMatrix<'_>) -> ! {
-    /* flag to store values */
-    let mut store_values_flag: bool = true;
+fn poll_matrix(matrix: &mut KeyMatrix<'_>, bool_matrix: &mut [[bool; COLS]; ROWS]) -> ! {
+    let mut arr_row: usize;
+    let mut arr_col: usize;
 
     loop {
+        /* reset variables */
+        arr_row = 0;
+        arr_col = 0;
+
         /* check rows and cols */
         for row in matrix.rows.iter_mut() {
             /* set row to high */
             row.set_high().unwrap();
 
+            /* delay so pin can propagate */
+            FreeRtos::delay_ms(1);
+
             /* check if a col is high */
             for col in matrix.cols.iter_mut() {
                 /* if a col is high */
-                while col.is_high() {
-                    if store_values_flag {
-                        ATOMIC_KEY_ROW.store(row.pin(), Ordering::Relaxed);
-                        ATOMIC_KEY_COL.store(col.pin(), Ordering::Relaxed);
-
-                        /* set bool */
-                        ATOMIC_KEY_BOOL.store(true, Ordering::Relaxed);
-                        store_values_flag = false;
-                    }
-                    /* Delay so wdt doesn't kick in */
-                    delay_ms(1).await;
+                if col.is_high() {
+                    /* store pressed keys */
+                    bool_matrix[arr_col][arr_row] = true;
                 }
-
-                /* reset bool */
-                store_values_flag = true;
+                /* increment col */
+                arr_col += 1;
             }
 
             /* set row to low */
             row.set_low().unwrap();
 
-            /* Delay so wdt doesn't kick in */
-            delay_ms(1).await;
+            /* increment row */
+            arr_row += 1;
         }
-    }
-}
-
-async fn modifier_matrix(matrix: &mut ModifierMatrix<'_>) -> ! {
-    /* flag to store values */
-    let mut store_values_flag: bool = true;
-
-    /* set modifier row to always high */
-    matrix.rows[0].set_high().unwrap();
-
-    loop {
-        /* check if a col is high */
-        for col in matrix.cols.iter_mut() {
-            /* if a col is high */
-            while col.is_high() {
-                if store_values_flag {
-                    ATOMIC_MODIFIER_ROW.store(matrix.rows[0].pin(), Ordering::Relaxed);
-                    ATOMIC_MODIFIER_COL.store(col.pin(), Ordering::Relaxed);
-
-                    /* set bool */
-                    ATOMIC_MODIFIER_BOOL.store(true, Ordering::Relaxed);
-
-                    /* reset bool */
-                    store_values_flag = false;
-                }
-
-                /* Delay so wdt doesn't kick in */
-                delay_ms(1).await;
-            }
-
-            /* reset bool */
-            store_values_flag = true;
-        }
-        /* Delay so wdt doesn't kick in */
-        delay_ms(1).await;
     }
 }
