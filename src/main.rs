@@ -6,8 +6,13 @@ to flash: espflash flash ./target/riscv32imc-esp-espidf/release/esp32-rust-split
 use crate::ble_keyboard::*;
 
 use anyhow;
+use embassy_futures::select::select;
+use embassy_time::Instant;
 use enums::HidMapings;
 use esp32_rust_split_keyboard::*;
+use esp_idf_hal::task::block_on;
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
 
 fn main() -> anyhow::Result<()> {
     esp_idf_svc::sys::link_patches();
@@ -15,128 +20,73 @@ fn main() -> anyhow::Result<()> {
     // Bind the log crate to the ESP Logging facilities
     esp_idf_svc::log::EspLogger::initialize_default();
 
+    /* initialize matrix */
+    let mut pin_matrix = PinMatrix::new();
+
+    log::info!("Pin Matrix Initialized...");
+
+    /* initialize layers */
+    let mut layers = Layers::new();
+    layers.initialize_base_layer();
+
+    /* initialize keys pressed hashmap */
+    let keys_pressed: Arc<Mutex<HashMap<(i8, i8), Instant>>> = Arc::new(Mutex::new(HashMap::new()));
+
+    /* run the tasks concurrently */
+    block_on(async {
+        select(
+            send_report(&keys_pressed, &layers),
+            pin_matrix.scan_grid(&keys_pressed),
+        )
+        .await;
+    });
+
+    Ok(())
+}
+
+async fn send_report(keys_pressed: &Arc<Mutex<HashMap<(i8, i8), Instant>>>, layers: &Layers) -> ! {
     /* initialize BLE */
     let mut ble_connection = Keyboard::new().unwrap();
 
     log::info!("BLE Initialized...");
 
-    /* initialize matrix */
-    let mut keyboard = KeyboardLeftSide::new();
-    keyboard.initialize_base_layer();
-
-    log::info!("Keyboard Initialized...");
-
-    /* initialize bool matrix */
-    let mut bool_matrix: [[bool; COLS]; ROWS] = [[false; COLS]; ROWS];
-
     /* Run the main loop */
     loop {
         if ble_connection.connected() {
-            poll_matrix(&mut keyboard.key_matrix, &mut bool_matrix).unwrap();
+            let mut keys_reported: Vec<(i8, i8)> = Vec::new();
+            /* try to lock the hashmap */
+            match keys_pressed.try_lock() {
+                Ok(mut keys_pressed_locked) => {
+                    /* check if there are pressed keys */
+                    if !keys_pressed_locked.is_empty() {
+                        /* iter trough the pressed keys */
+                        for ((row, col), time_pressed) in keys_pressed_locked.iter() {
+                            /* check if the current key has valid debounce */
+                            if Instant::now() >= *time_pressed + DEBOUNCE_DELAY {
+                                /* get the key from the layer */
+                                if let Some(valid_key) = layers.base.get(&(*row, *col)) {
+                                    ble_connection.press(*valid_key, HidMapings::None);
+                                    ble_connection.release();
 
-            /* */
-            let keys = get_keys_pressed(&mut bool_matrix);
-
-            if !keys.is_empty() {
-                for key in keys {
-                    if key == LAYER_KEY {
-                        match keyboard.layer {
-                            Layer::Base => keyboard.layer = Layer::Upper,
-                            Layer::Upper => keyboard.layer = Layer::Base,
-                        }
-                    }
-
-                    match keyboard.layer {
-                        Layer::Base => {
-                            if let Some(valid_key) = keyboard.base_layer.get(&key) {
-                                // if *valid_key ==
-                                let modifier = HidMapings::None;
-
-                                ble_connection.press(*valid_key, modifier);
-                                ble_connection.release();
+                                    /* store row and col */
+                                    keys_reported.push((*row, *col));
+                                }
                             }
                         }
-                        Layer::Upper => {
-                            todo!("Not yet implemented...");
+
+                        for row_col in keys_reported.iter() {
+                            /* key reported - remove the key */
+                            keys_pressed_locked.remove(row_col);
                         }
                     }
                 }
+                Err(_) => {}
             }
-            delay::delay_us(100);
+
+            delay::delay_us(10).await;
         } else {
             log::info!("Keyboard not connected!");
-            delay::delay_us(100000);
+            delay::delay_ms(100).await;
         }
     }
-}
-
-fn poll_matrix(
-    matrix: &mut KeyMatrix<'_>,
-    bool_matrix: &mut [[bool; COLS]; ROWS],
-) -> anyhow::Result<()> {
-    /* initialize counts */
-    let mut row_count: usize = 0;
-    let mut col_count: usize = 0;
-
-    /* check rows and cols */
-    for row in matrix.rows.iter_mut() {
-        /* set row to high */
-        row.set_high().unwrap();
-
-        /* delay so pin can propagate */
-        delay::delay_us(10);
-
-        /* check if a col is high */
-        for col in matrix.cols.iter_mut() {
-            /* if a col is high */
-            if col.is_high() {
-                /* store pressed keys */
-                bool_matrix[row_count][col_count] = true;
-            }
-            /* increment col */
-            col_count += 1;
-        }
-
-        /* set row to low */
-        row.set_low().unwrap();
-
-        /* increment row */
-        row_count += 1;
-
-        /* reset col count */
-        col_count = 0;
-    }
-
-    Ok(())
-}
-
-fn get_keys_pressed(bool_matrix: &mut [[bool; COLS]; ROWS]) -> Vec<(i8, i8)> {
-    /* initialize variables */
-    let mut keys_pressed: Vec<(i8, i8)> = Vec::new();
-    let (mut row_count, mut col_count): (i8, i8) = (0, 0);
-
-    /* itter the matrix */
-    for row in bool_matrix {
-        /* itter col */
-        for col in row {
-            /* if an element is true */
-            if *col {
-                /* store it */
-                keys_pressed.push((row_count, col_count));
-                *col = false;
-            }
-
-            /* increment col count */
-            col_count += 1;
-        }
-
-        /* increment row count */
-        row_count += 1;
-
-        /* reset col count */
-        col_count = 0;
-    }
-
-    /* return pressed keys */
-    keys_pressed
 }
