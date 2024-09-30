@@ -2,7 +2,7 @@
 *********************************************************************************************
 BASE LAYER:
 
-X \ Y|  0  |  1  |  2  |  3  |  4  |  5  |           X \ Y|  0  |  1  |  2  |  3  |  4  |  5 |
+X \ Y|  0  |  1  |  2  |  3  |  4  |  5  |           X \ Y|  0  |  1  |  2  |  3  |  4  |  5  |
    0 |_ESC_|__1__|__2__|__3__|__4__|__5__|              0 |__6__|__7__|__8__|__9__|__0__|__-__|
    1 |_TAB_|__q__|__w__|__e__|__r__|__t__|              1 |__y__|__u__|__i__|__o__|__p__|__[__|
    2 |_BSP_|__a__|__s__|__d__|__f__|__g__|              2 |__h__|__j__|__k__|__l__|__;__|__]__|
@@ -21,7 +21,7 @@ pub mod ble_keyboard;
 pub mod enums;
 
 pub mod delay {
-    use embassy_time::{Duration, Instant, Timer};
+    use embassy_time::{Duration, Timer};
 
     pub async fn delay_ms(delay: u64) {
         let duration = Duration::from_millis(delay);
@@ -31,10 +31,6 @@ pub mod delay {
     pub async fn delay_us(delay: u64) {
         let duration = Duration::from_millis(delay);
         Timer::after(duration).await;
-    }
-
-    pub fn time_now() -> Instant {
-        Instant::now()
     }
 }
 
@@ -130,8 +126,8 @@ pub enum Layer {
     Upper,
 }
 pub struct Layers {
-    pub base: HashMap<(i8, i8), HidMapings>,
-    pub upper: HashMap<(i8, i8), HidMapings>,
+    pub base: HashMap<(i8, i8), HidKeys>,
+    pub upper: HashMap<(i8, i8), HidKeys>,
     pub state: Layer,
 }
 
@@ -144,39 +140,39 @@ impl Layers {
         }
     }
     pub fn initialize_base_layer(&mut self) {
-        self.base.insert((0, 0), HidMapings::Escape); // ESC
-        self.base.insert((0, 1), HidMapings::Num1); // 1
-        self.base.insert((0, 2), HidMapings::Num2); // 2
-        self.base.insert((0, 3), HidMapings::Num3); // 3
-        self.base.insert((0, 4), HidMapings::Num4); // 4
-        self.base.insert((0, 5), HidMapings::Num5); // 5
+        self.base.insert((0, 0), HidKeys::Escape); // ESC
+        self.base.insert((0, 1), HidKeys::Num1); // 1
+        self.base.insert((0, 2), HidKeys::Num2); // 2
+        self.base.insert((0, 3), HidKeys::Num3); // 3
+        self.base.insert((0, 4), HidKeys::Num4); // 4
+        self.base.insert((0, 5), HidKeys::Num5); // 5
 
-        self.base.insert((1, 0), HidMapings::Tab); // TAB
-        self.base.insert((1, 1), HidMapings::Q); // q
-        self.base.insert((1, 2), HidMapings::W); // w
-        self.base.insert((1, 3), HidMapings::E); // e
-        self.base.insert((1, 4), HidMapings::R); // r
-        self.base.insert((1, 5), HidMapings::T); // t
+        self.base.insert((1, 0), HidKeys::Tab); // TAB
+        self.base.insert((1, 1), HidKeys::Q); // q
+        self.base.insert((1, 2), HidKeys::W); // w
+        self.base.insert((1, 3), HidKeys::E); // e
+        self.base.insert((1, 4), HidKeys::R); // r
+        self.base.insert((1, 5), HidKeys::T); // t
 
-        self.base.insert((2, 0), HidMapings::Capslock); // BACKSPACE
-        self.base.insert((2, 1), HidMapings::A); // a
-        self.base.insert((2, 2), HidMapings::S); // s
-        self.base.insert((2, 3), HidMapings::D); // d
-        self.base.insert((2, 4), HidMapings::F); // f
-        self.base.insert((2, 5), HidMapings::G); // g
+        self.base.insert((2, 0), HidKeys::Capslock); // BACKSPACE
+        self.base.insert((2, 1), HidKeys::A); // a
+        self.base.insert((2, 2), HidKeys::S); // s
+        self.base.insert((2, 3), HidKeys::D); // d
+        self.base.insert((2, 4), HidKeys::F); // f
+        self.base.insert((2, 5), HidKeys::G); // g
 
-        self.base.insert((3, 0), HidMapings::None); // LAYER
-        self.base.insert((3, 1), HidMapings::Z); // z
-        self.base.insert((3, 2), HidMapings::X); // x
-        self.base.insert((3, 3), HidMapings::C); // c
-        self.base.insert((3, 4), HidMapings::V); // v
-        self.base.insert((3, 5), HidMapings::B); // b
+        self.base.insert((3, 0), HidKeys::None); // LAYER
+        self.base.insert((3, 1), HidKeys::Z); // z
+        self.base.insert((3, 2), HidKeys::X); // x
+        self.base.insert((3, 3), HidKeys::C); // c
+        self.base.insert((3, 4), HidKeys::V); // v
+        self.base.insert((3, 5), HidKeys::B); // b
 
-        self.base.insert((4, 0), HidMapings::None); //
-        self.base.insert((4, 1), HidMapings::None); //
-        self.base.insert((4, 2), HidMapings::None); //
-        self.base.insert((4, 3), HidMapings::Control); // CONTROL
-        self.base.insert((4, 4), HidMapings::Shift); // SHIFT
-        self.base.insert((4, 5), HidMapings::Space); // SPACE
+        self.base.insert((4, 0), HidKeys::None); //
+        self.base.insert((4, 1), HidKeys::None); //
+        self.base.insert((4, 2), HidKeys::None); //
+        self.base.insert((4, 3), HidKeys::Control); // CONTROL
+        self.base.insert((4, 4), HidKeys::Shift); // SHIFT
+        self.base.insert((4, 5), HidKeys::Space); // SPACE
     }
 }

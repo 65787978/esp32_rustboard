@@ -7,8 +7,6 @@ use esp32_nimble::{
 };
 use std::sync::Arc;
 
-use crate::HidMapings;
-
 const KEYBOARD_ID: u8 = 0x01;
 const MEDIA_KEYS_ID: u8 = 0x02;
 
@@ -152,20 +150,16 @@ impl Keyboard {
     //     }
     // }
 
-    pub fn press(&mut self, char: HidMapings, modifier: HidMapings) {
-        let mut key = char;
+    pub fn press(&mut self, char: u8, modifier: u8) {
+        // let mut key = char;
         // if (key & SHIFT) > 0 {
         //     self.key_report.modifiers |= 0x02;
         //     key &= !SHIFT;
         // }
-        match modifier {
-            HidMapings::Shift => self.key_report.modifiers |= 0x02,
-            HidMapings::Control => self.key_report.modifiers |= 0x01,
-            HidMapings::Space => key = HidMapings::Space,
-            _ => {}
-        }
 
-        self.key_report.keys[0] = key as u8;
+        self.key_report.modifiers = modifier;
+
+        self.key_report.keys[0] = char;
         self.send_report(&self.key_report);
     }
 

@@ -2,7 +2,7 @@ pub const SHIFT: isize = 0x80;
 
 /* Scan codes - HID Keyboard: https://gist.github.com/MightyPork/6da26e382a7ad91b5496ee55fdc73db2 */
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub enum HidMapings {
+pub enum HidKeys {
     None = 0x00,
     Undefined = 0x03,
     A = 0x04,
@@ -168,4 +168,6 @@ pub enum HidMapings {
     Exsel = 0xA4,
     Shift = 0x02,
     Control = 0x01,
+    // Alt = 0x40,
+    // Super = 0x08,
 }

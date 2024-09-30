@@ -8,7 +8,7 @@ use crate::ble_keyboard::*;
 use anyhow;
 use embassy_futures::select::select;
 use embassy_time::Instant;
-use enums::HidMapings;
+use enums::HidKeys;
 use esp32_rust_split_keyboard::*;
 use esp_idf_hal::task::block_on;
 use std::collections::HashMap;
@@ -50,9 +50,13 @@ async fn send_report(keys_pressed: &Arc<Mutex<HashMap<(i8, i8), Instant>>>, laye
 
     log::info!("BLE Initialized...");
 
+    /* initialize modifier */
+    let mut modifier: u8 = 0;
+
     /* Run the main loop */
     loop {
         if ble_connection.connected() {
+            /* store the keys that have been reported */
             let mut keys_reported: Vec<(i8, i8)> = Vec::new();
             /* try to lock the hashmap */
             match keys_pressed.try_lock() {
@@ -65,7 +69,17 @@ async fn send_report(keys_pressed: &Arc<Mutex<HashMap<(i8, i8), Instant>>>, laye
                             if Instant::now() >= *time_pressed + DEBOUNCE_DELAY {
                                 /* get the key from the layer */
                                 if let Some(valid_key) = layers.base.get(&(*row, *col)) {
-                                    ble_connection.press(*valid_key, HidMapings::None);
+                                    /* */
+                                    match *valid_key {
+                                        HidKeys::Shift => modifier |= HidKeys::Shift as u8,
+                                        HidKeys::Control => modifier |= HidKeys::Control as u8,
+                                        // HidKeys::Alt => modifier |= HidKeys::Alt,
+                                        // HidKeys::Super => modifier |= HidKeys::Super,
+                                        _ => {}
+                                    }
+
+                                    /* send the key */
+                                    ble_connection.press(*valid_key as u8, modifier as u8);
                                     ble_connection.release();
 
                                     /* store row and col */
@@ -78,6 +92,9 @@ async fn send_report(keys_pressed: &Arc<Mutex<HashMap<(i8, i8), Instant>>>, laye
                             /* key reported - remove the key */
                             keys_pressed_locked.remove(row_col);
                         }
+
+                        /* reset the modifier */
+                        modifier = 0;
                     }
                 }
                 Err(_) => {}
