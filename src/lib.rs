@@ -47,7 +47,7 @@ pub const SLEEP_DELAY_INIT: Duration = Duration::from_millis(30000);
 
 pub struct PinMatrix<'a> {
     pub rows: [PinDriver<'a, AnyOutputPin, Output>; ROWS],
-    pub cols: [PinDriver<'a, AnyInputPin, Input>; COLS],
+    pub cols: [PinDriver<'a, AnyIOPin, Input>; COLS],
     enter_sleep_delay: Instant,
 }
 
@@ -64,12 +64,12 @@ impl PinMatrix<'_> {
                 PinDriver::output(peripherals.pins.gpio19.downgrade_output()).unwrap(),
             ],
             cols: [
-                PinDriver::input(peripherals.pins.gpio2.downgrade_input()).unwrap(),
-                PinDriver::input(peripherals.pins.gpio3.downgrade_input()).unwrap(),
-                PinDriver::input(peripherals.pins.gpio10.downgrade_input()).unwrap(),
-                PinDriver::input(peripherals.pins.gpio6.downgrade_input()).unwrap(),
-                PinDriver::input(peripherals.pins.gpio7.downgrade_input()).unwrap(),
-                PinDriver::input(peripherals.pins.gpio4.downgrade_input()).unwrap(),
+                PinDriver::input(peripherals.pins.gpio2.downgrade()).unwrap(),
+                PinDriver::input(peripherals.pins.gpio3.downgrade()).unwrap(),
+                PinDriver::input(peripherals.pins.gpio10.downgrade()).unwrap(),
+                PinDriver::input(peripherals.pins.gpio6.downgrade()).unwrap(),
+                PinDriver::input(peripherals.pins.gpio7.downgrade()).unwrap(),
+                PinDriver::input(peripherals.pins.gpio4.downgrade()).unwrap(),
             ],
             enter_sleep_delay: Instant::now() + SLEEP_DELAY_INIT,
         }
@@ -77,6 +77,7 @@ impl PinMatrix<'_> {
 
     fn set_cols_interrupt(&mut self) {
         for col in self.cols.iter_mut() {
+            col.set_pull(Pull::Down).unwrap();
             col.set_interrupt_type(InterruptType::AnyEdge).unwrap();
         }
     }

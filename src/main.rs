@@ -64,7 +64,7 @@ async fn send_report(keys_pressed: &Arc<Mutex<HashMap<(i8, i8), Instant>>>, laye
             /* set ble power save */
             if set_ble_power_flag {
                 /* set power save */
-                set_ble_power();
+                set_ble_power_save();
 
                 /* set flag to false */
                 set_ble_power_flag = false;
@@ -125,7 +125,7 @@ async fn send_report(keys_pressed: &Arc<Mutex<HashMap<(i8, i8), Instant>>>, laye
     }
 }
 
-fn set_ble_power() {
+fn set_ble_power_save() {
     /* set power save */
     unsafe {
         esp_idf_sys::esp_ble_tx_power_set(
