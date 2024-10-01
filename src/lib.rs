@@ -42,10 +42,13 @@ pub const ROWS: usize = 5;
 pub const COLS: usize = 6;
 pub const LAYER_KEY: (i8, i8) = (3, 0);
 pub const DEBOUNCE_DELAY: Duration = Duration::from_millis(50);
+pub const SLEEP_DELAY: Duration = Duration::from_millis(15000);
+pub const SLEEP_DELAY_INIT: Duration = Duration::from_millis(30000);
 
 pub struct PinMatrix<'a> {
     pub rows: [PinDriver<'a, AnyOutputPin, Output>; ROWS],
     pub cols: [PinDriver<'a, AnyInputPin, Input>; COLS],
+    enter_sleep_delay: Instant,
 }
 
 impl PinMatrix<'_> {
@@ -68,6 +71,7 @@ impl PinMatrix<'_> {
                 PinDriver::input(peripherals.pins.gpio7.downgrade_input()).unwrap(),
                 PinDriver::input(peripherals.pins.gpio4.downgrade_input()).unwrap(),
             ],
+            enter_sleep_delay: Instant::now() + SLEEP_DELAY_INIT,
         }
     }
 
@@ -83,6 +87,10 @@ impl PinMatrix<'_> {
         }
     }
 
+    fn reset_sleep_delay(&mut self) {
+        self.enter_sleep_delay = Instant::now() + SLEEP_DELAY;
+    }
+
     pub async fn scan_grid(&mut self, keys_pressed: &Arc<Mutex<HashMap<(i8, i8), Instant>>>) -> ! {
         /* initialize interrupt */
         self.set_cols_interrupt();
@@ -91,11 +99,11 @@ impl PinMatrix<'_> {
         let mut row_count: i8 = 0;
         let mut col_count: i8 = 0;
 
-        /* initialize enter sleep mode count */
-        let mut enter_sleep_mode_count: u16 = 0;
+        /* initialize key_pressed */
+        let mut key_pressed = false;
 
         loop {
-            if enter_sleep_mode_count >= 100 {
+            if Instant::now() >= self.enter_sleep_delay {
                 /* enable interrupts */
                 self.set_enable_interrupts();
 
@@ -131,6 +139,9 @@ impl PinMatrix<'_> {
 
                     esp_idf_sys::esp_sleep_enable_gpio_wakeup();
                     esp_idf_sys::esp_light_sleep_start();
+
+                    /* reset sleep delay */
+                    self.reset_sleep_delay();
                 };
             } else {
                 /* check rows and cols */
@@ -142,7 +153,7 @@ impl PinMatrix<'_> {
                     delay::delay_us(50).await;
 
                     /* check if a col is high */
-                    for col in self.cols.iter_mut() {
+                    for col in self.cols.iter() {
                         /* if a col is high */
                         if col.is_high() {
                             log::info!("ArcMutex not yet locked");
@@ -163,8 +174,8 @@ impl PinMatrix<'_> {
                                 Err(_) => {}
                             }
 
-                            /* reset sleep mode count if a key is pressed */
-                            enter_sleep_mode_count = 0;
+                            /* reset sleep delay if a key is pressed */
+                            key_pressed = true;
                         }
                         /* increment col */
                         col_count += 1;
@@ -182,8 +193,14 @@ impl PinMatrix<'_> {
                 /* reset row count */
                 row_count = 0;
 
-                /* increment sleep mode count */
-                enter_sleep_mode_count += 1;
+                /* if a key has been pressed */
+                if key_pressed {
+                    /* reset key_pressed */
+                    key_pressed = false;
+
+                    /* reset sleep delay */
+                    self.reset_sleep_delay();
+                }
             }
         }
     }
