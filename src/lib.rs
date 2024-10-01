@@ -14,6 +14,10 @@ use crate::enums::*;
 use embassy_time::{Duration, Instant};
 use esp_idf_svc::hal::gpio::*;
 use esp_idf_svc::hal::peripherals::Peripherals;
+use esp_idf_sys::{
+    self as _, gpio_int_type_t_GPIO_INTR_LOW_LEVEL, gpio_num_t_GPIO_NUM_10, gpio_num_t_GPIO_NUM_2,
+    gpio_num_t_GPIO_NUM_3, gpio_num_t_GPIO_NUM_4, gpio_num_t_GPIO_NUM_6, gpio_num_t_GPIO_NUM_7,
+};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 
@@ -67,56 +71,120 @@ impl PinMatrix<'_> {
         }
     }
 
+    fn set_cols_interrupt(&mut self) {
+        for col in self.cols.iter_mut() {
+            col.set_interrupt_type(InterruptType::AnyEdge).unwrap();
+        }
+    }
+
+    fn set_enable_interrupts(&mut self) {
+        for col in self.cols.iter_mut() {
+            col.enable_interrupt().unwrap();
+        }
+    }
+
     pub async fn scan_grid(&mut self, keys_pressed: &Arc<Mutex<HashMap<(i8, i8), Instant>>>) -> ! {
+        /* initialize interrupt */
+        self.set_cols_interrupt();
+
         /* initialize counts */
         let mut row_count: i8 = 0;
         let mut col_count: i8 = 0;
 
+        /* initialize enter sleep mode count */
+        let mut enter_sleep_mode_count: u16 = 0;
+
         loop {
-            /* check rows and cols */
-            for row in self.rows.iter_mut() {
-                /* set row to high */
-                row.set_high().unwrap();
+            if enter_sleep_mode_count >= 100 {
+                /* enable interrupts */
+                self.set_enable_interrupts();
 
-                /* delay so pin can propagate */
-                delay::delay_us(10).await;
+                /* set the home row to high */
+                self.rows[2].set_high().unwrap();
 
-                /* check if a col is high */
-                for col in self.cols.iter_mut() {
-                    /* if a col is high */
-                    if col.is_high() {
-                        log::info!("ArcMutex not yet locked");
-                        /* lock the hashmap */
-                        match keys_pressed.try_lock() {
-                            Ok(mut key_pressed_lock) => {
-                                log::info!("ArcMutex Locked");
+                /* enter sleep mode */
+                unsafe {
+                    esp_idf_sys::gpio_wakeup_enable(
+                        gpio_num_t_GPIO_NUM_2,
+                        gpio_int_type_t_GPIO_INTR_LOW_LEVEL,
+                    );
+                    esp_idf_sys::gpio_wakeup_enable(
+                        gpio_num_t_GPIO_NUM_3,
+                        gpio_int_type_t_GPIO_INTR_LOW_LEVEL,
+                    );
+                    esp_idf_sys::gpio_wakeup_enable(
+                        gpio_num_t_GPIO_NUM_10,
+                        gpio_int_type_t_GPIO_INTR_LOW_LEVEL,
+                    );
+                    esp_idf_sys::gpio_wakeup_enable(
+                        gpio_num_t_GPIO_NUM_6,
+                        gpio_int_type_t_GPIO_INTR_LOW_LEVEL,
+                    );
+                    esp_idf_sys::gpio_wakeup_enable(
+                        gpio_num_t_GPIO_NUM_7,
+                        gpio_int_type_t_GPIO_INTR_LOW_LEVEL,
+                    );
+                    esp_idf_sys::gpio_wakeup_enable(
+                        gpio_num_t_GPIO_NUM_4,
+                        gpio_int_type_t_GPIO_INTR_LOW_LEVEL,
+                    );
 
-                                /* check if the key has been pressed already*/
-                                if !key_pressed_lock.contains_key(&(row_count, col_count)) {
-                                    /* store pressed keys */
-                                    key_pressed_lock.insert((row_count, col_count), Instant::now());
+                    esp_idf_sys::esp_sleep_enable_gpio_wakeup();
+                    esp_idf_sys::esp_light_sleep_start();
+                };
+            } else {
+                /* check rows and cols */
+                for row in self.rows.iter_mut() {
+                    /* set row to high */
+                    row.set_high().unwrap();
 
-                                    log::info!("Pressed keys stored!");
+                    /* delay so pin can propagate */
+                    delay::delay_us(50).await;
+
+                    /* check if a col is high */
+                    for col in self.cols.iter_mut() {
+                        /* if a col is high */
+                        if col.is_high() {
+                            log::info!("ArcMutex not yet locked");
+                            /* lock the hashmap */
+                            match keys_pressed.try_lock() {
+                                Ok(mut key_pressed_lock) => {
+                                    log::info!("ArcMutex Locked");
+
+                                    /* check if the key has been pressed already*/
+                                    if !key_pressed_lock.contains_key(&(row_count, col_count)) {
+                                        /* store pressed keys */
+                                        key_pressed_lock
+                                            .insert((row_count, col_count), Instant::now());
+
+                                        log::info!("Pressed keys stored!");
+                                    }
                                 }
+                                Err(_) => {}
                             }
-                            Err(_) => {}
+
+                            /* reset sleep mode count if a key is pressed */
+                            enter_sleep_mode_count = 0;
                         }
+                        /* increment col */
+                        col_count += 1;
                     }
-                    /* increment col */
-                    col_count += 1;
+
+                    /* set row to low */
+                    row.set_low().unwrap();
+
+                    /* increment row */
+                    row_count += 1;
+
+                    /* reset col count */
+                    col_count = 0;
                 }
+                /* reset row count */
+                row_count = 0;
 
-                /* set row to low */
-                row.set_low().unwrap();
-
-                /* increment row */
-                row_count += 1;
-
-                /* reset col count */
-                col_count = 0;
+                /* increment sleep mode count */
+                enter_sleep_mode_count += 1;
             }
-            /* reset row count */
-            row_count = 0;
         }
     }
 }

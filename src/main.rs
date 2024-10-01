@@ -11,9 +11,11 @@ use embassy_time::Instant;
 use enums::HidKeys;
 use esp32_rust_split_keyboard::*;
 use esp_idf_hal::task::block_on;
+use esp_idf_sys::{
+    esp_ble_power_type_t_ESP_BLE_PWR_TYPE_CONN_HDL0, esp_power_level_t_ESP_PWR_LVL_N24,
+};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
-
 fn main() -> anyhow::Result<()> {
     esp_idf_svc::sys::link_patches();
 
@@ -53,9 +55,20 @@ async fn send_report(keys_pressed: &Arc<Mutex<HashMap<(i8, i8), Instant>>>, laye
     /* initialize modifier */
     let mut modifier: u8 = 0;
 
+    /* initialize set_ble_power_flag */
+    let mut set_ble_power_flag = true;
+
     /* Run the main loop */
     loop {
         if ble_connection.connected() {
+            /* set ble power save */
+            if set_ble_power_flag {
+                /* set power save */
+                set_ble_power();
+
+                /* set flag to false */
+                set_ble_power_flag = false;
+            }
             /* store the keys that have been reported */
             let mut keys_reported: Vec<(i8, i8)> = Vec::new();
             /* try to lock the hashmap */
@@ -103,7 +116,21 @@ async fn send_report(keys_pressed: &Arc<Mutex<HashMap<(i8, i8), Instant>>>, laye
             delay::delay_us(10).await;
         } else {
             log::info!("Keyboard not connected!");
+
+            /* reset ble power save flag*/
+            set_ble_power_flag = true;
+
             delay::delay_ms(100).await;
         }
+    }
+}
+
+fn set_ble_power() {
+    /* set power save */
+    unsafe {
+        esp_idf_sys::esp_ble_tx_power_set(
+            esp_ble_power_type_t_ESP_BLE_PWR_TYPE_CONN_HDL0,
+            esp_power_level_t_ESP_PWR_LVL_N24,
+        );
     }
 }
