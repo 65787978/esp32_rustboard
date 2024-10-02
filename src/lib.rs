@@ -15,8 +15,9 @@ use embassy_time::{Duration, Instant};
 use esp_idf_svc::hal::gpio::*;
 use esp_idf_svc::hal::peripherals::Peripherals;
 use esp_idf_sys::{
-    self as _, gpio_int_type_t_GPIO_INTR_LOW_LEVEL, gpio_num_t_GPIO_NUM_10, gpio_num_t_GPIO_NUM_2,
-    gpio_num_t_GPIO_NUM_3, gpio_num_t_GPIO_NUM_4, gpio_num_t_GPIO_NUM_6, gpio_num_t_GPIO_NUM_7,
+    self as _, gpio_int_type_t_GPIO_INTR_HIGH_LEVEL, gpio_int_type_t_GPIO_INTR_LOW_LEVEL,
+    gpio_num_t_GPIO_NUM_10, gpio_num_t_GPIO_NUM_2, gpio_num_t_GPIO_NUM_3, gpio_num_t_GPIO_NUM_4,
+    gpio_num_t_GPIO_NUM_6, gpio_num_t_GPIO_NUM_7,
 };
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
@@ -78,7 +79,7 @@ impl PinMatrix<'_> {
     fn set_cols_interrupt(&mut self) {
         for col in self.cols.iter_mut() {
             col.set_pull(Pull::Down).unwrap();
-            col.set_interrupt_type(InterruptType::AnyEdge).unwrap();
+            col.set_interrupt_type(InterruptType::HighLevel).unwrap();
         }
     }
 
@@ -109,41 +110,58 @@ impl PinMatrix<'_> {
                 self.set_enable_interrupts();
 
                 /* set the home row to high */
-                self.rows[2].set_high().unwrap();
+                self.rows[0].set_high().unwrap();
 
                 /* enter sleep mode */
                 unsafe {
-                    esp_idf_sys::gpio_wakeup_enable(
-                        gpio_num_t_GPIO_NUM_2,
-                        gpio_int_type_t_GPIO_INTR_LOW_LEVEL,
-                    );
-                    esp_idf_sys::gpio_wakeup_enable(
-                        gpio_num_t_GPIO_NUM_3,
-                        gpio_int_type_t_GPIO_INTR_LOW_LEVEL,
-                    );
-                    esp_idf_sys::gpio_wakeup_enable(
-                        gpio_num_t_GPIO_NUM_10,
-                        gpio_int_type_t_GPIO_INTR_LOW_LEVEL,
-                    );
-                    esp_idf_sys::gpio_wakeup_enable(
-                        gpio_num_t_GPIO_NUM_6,
-                        gpio_int_type_t_GPIO_INTR_LOW_LEVEL,
-                    );
-                    esp_idf_sys::gpio_wakeup_enable(
-                        gpio_num_t_GPIO_NUM_7,
-                        gpio_int_type_t_GPIO_INTR_LOW_LEVEL,
-                    );
-                    esp_idf_sys::gpio_wakeup_enable(
-                        gpio_num_t_GPIO_NUM_4,
-                        gpio_int_type_t_GPIO_INTR_LOW_LEVEL,
-                    );
+                    // let info2 = esp_idf_sys::gpio_wakeup_enable(
+                    //     gpio_num_t_GPIO_NUM_2,
+                    //     gpio_int_type_t_GPIO_INTR_HIGH_LEVEL,
+                    // );
 
-                    esp_idf_sys::esp_sleep_enable_gpio_wakeup();
-                    esp_idf_sys::esp_light_sleep_start();
+                    log::info!("gpio_wakeup_enable: {}", info2);
+
+                    // esp_idf_sys::gpio_wakeup_enable(
+                    //     gpio_num_t_GPIO_NUM_3,
+                    //     gpio_int_type_t_GPIO_INTR_LOW_LEVEL,
+                    // );
+                    // esp_idf_sys::gpio_wakeup_enable(
+                    //     gpio_num_t_GPIO_NUM_10,
+                    //     gpio_int_type_t_GPIO_INTR_LOW_LEVEL,
+                    // );
+                    // esp_idf_sys::gpio_wakeup_enable(
+                    //     gpio_num_t_GPIO_NUM_6,
+                    //     gpio_int_type_t_GPIO_INTR_LOW_LEVEL,
+                    // );
+                    // esp_idf_sys::gpio_wakeup_enable(
+                    //     gpio_num_t_GPIO_NUM_7,
+                    //     gpio_int_type_t_GPIO_INTR_LOW_LEVEL,
+                    // );
+                    // esp_idf_sys::gpio_wakeup_enable(
+                    //     gpio_num_t_GPIO_NUM_4,11
+                    //     gpio_int_type_t_GPIO_INTR_LOW_LEVEL,
+                    // );
+                    log::info!("Entering sleep...");
+
+                    // let info = esp_idf_sys::esp_sleep_enable_gpio_wakeup();
+                    // log::info!("esp_sleep_enable_gpio_wakeup: {}", info);
+
+                    esp_idf_sys::esp_sleep_enable
+
+                    let info1 = esp_idf_sys::esp_light_sleep_start();
+
+                    log::info!("esp_light_sleep_start: {}", info1);
+
+                    log::info!("Woke up...");
+
+                    log::info!(
+                        "esp_sleep_get_wakeup_cause: {}",
+                        esp_idf_sys::esp_sleep_get_wakeup_cause()
+                    );
 
                     /* reset sleep delay */
                     self.reset_sleep_delay();
-                };
+                }
             } else {
                 /* check rows and cols */
                 for row in self.rows.iter_mut() {
@@ -151,7 +169,7 @@ impl PinMatrix<'_> {
                     row.set_high().unwrap();
 
                     /* delay so pin can propagate */
-                    delay::delay_us(50).await;
+                    delay::delay_us(10).await;
 
                     /* check if a col is high */
                     for col in self.cols.iter() {
@@ -262,3 +280,4 @@ impl Layers {
         self.base.insert((4, 5), HidKeys::Space); // SPACE
     }
 }
+//''''''1111111111111111111111''''''''''''''''
