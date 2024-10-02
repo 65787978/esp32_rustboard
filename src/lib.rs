@@ -110,54 +110,47 @@ impl PinMatrix<'_> {
                 self.set_enable_interrupts();
 
                 /* set the home row to high */
-                self.rows[0].set_high().unwrap();
+                self.rows[2].set_high().unwrap();
 
                 /* enter sleep mode */
                 unsafe {
-                    // let info2 = esp_idf_sys::gpio_wakeup_enable(
-                    //     gpio_num_t_GPIO_NUM_2,
-                    //     gpio_int_type_t_GPIO_INTR_HIGH_LEVEL,
-                    // );
+                    /* set gpios that can wake up the chip */
+                    esp_idf_sys::gpio_wakeup_enable(
+                        gpio_num_t_GPIO_NUM_2,
+                        gpio_int_type_t_GPIO_INTR_HIGH_LEVEL,
+                    );
 
-                    log::info!("gpio_wakeup_enable: {}", info2);
+                    esp_idf_sys::gpio_wakeup_enable(
+                        gpio_num_t_GPIO_NUM_3,
+                        gpio_int_type_t_GPIO_INTR_HIGH_LEVEL,
+                    );
+                    esp_idf_sys::gpio_wakeup_enable(
+                        gpio_num_t_GPIO_NUM_10,
+                        gpio_int_type_t_GPIO_INTR_HIGH_LEVEL,
+                    );
+                    esp_idf_sys::gpio_wakeup_enable(
+                        gpio_num_t_GPIO_NUM_6,
+                        gpio_int_type_t_GPIO_INTR_HIGH_LEVEL,
+                    );
+                    esp_idf_sys::gpio_wakeup_enable(
+                        gpio_num_t_GPIO_NUM_7,
+                        gpio_int_type_t_GPIO_INTR_HIGH_LEVEL,
+                    );
+                    esp_idf_sys::gpio_wakeup_enable(
+                        gpio_num_t_GPIO_NUM_4,
+                        gpio_int_type_t_GPIO_INTR_HIGH_LEVEL,
+                    );
 
-                    // esp_idf_sys::gpio_wakeup_enable(
-                    //     gpio_num_t_GPIO_NUM_3,
-                    //     gpio_int_type_t_GPIO_INTR_LOW_LEVEL,
-                    // );
-                    // esp_idf_sys::gpio_wakeup_enable(
-                    //     gpio_num_t_GPIO_NUM_10,
-                    //     gpio_int_type_t_GPIO_INTR_LOW_LEVEL,
-                    // );
-                    // esp_idf_sys::gpio_wakeup_enable(
-                    //     gpio_num_t_GPIO_NUM_6,
-                    //     gpio_int_type_t_GPIO_INTR_LOW_LEVEL,
-                    // );
-                    // esp_idf_sys::gpio_wakeup_enable(
-                    //     gpio_num_t_GPIO_NUM_7,
-                    //     gpio_int_type_t_GPIO_INTR_LOW_LEVEL,
-                    // );
-                    // esp_idf_sys::gpio_wakeup_enable(
-                    //     gpio_num_t_GPIO_NUM_4,11
-                    //     gpio_int_type_t_GPIO_INTR_LOW_LEVEL,
-                    // );
+                    esp_idf_sys::esp_sleep_enable_gpio_switch(false);
+
+                    esp_idf_sys::esp_sleep_enable_gpio_wakeup();
+
                     log::info!("Entering sleep...");
 
-                    // let info = esp_idf_sys::esp_sleep_enable_gpio_wakeup();
-                    // log::info!("esp_sleep_enable_gpio_wakeup: {}", info);
-
-                    esp_idf_sys::esp_sleep_enable
-
-                    let info1 = esp_idf_sys::esp_light_sleep_start();
-
-                    log::info!("esp_light_sleep_start: {}", info1);
+                    /* enter sleep */
+                    esp_idf_sys::esp_light_sleep_start();
 
                     log::info!("Woke up...");
-
-                    log::info!(
-                        "esp_sleep_get_wakeup_cause: {}",
-                        esp_idf_sys::esp_sleep_get_wakeup_cause()
-                    );
 
                     /* reset sleep delay */
                     self.reset_sleep_delay();
@@ -280,4 +273,3 @@ impl Layers {
         self.base.insert((4, 5), HidKeys::Space); // SPACE
     }
 }
-//''''''1111111111111111111111''''''''''''''''
