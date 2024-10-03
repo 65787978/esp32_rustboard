@@ -1,11 +1,21 @@
 // originally: https://github.com/T-vK/ESP32-BLE-Keyboard
 #![allow(dead_code)]
 
+use crate::enums::HidKeys;
+use crate::Layers;
+use embassy_time::Instant;
 use esp32_nimble::{
     enums::*, hid::*, utilities::mutex::Mutex, BLEAdvertisementData, BLECharacteristic, BLEDevice,
     BLEHIDDevice, BLEServer,
 };
-use std::sync::Arc;
+use esp_idf_sys::{
+    esp_ble_power_type_t_ESP_BLE_PWR_TYPE_CONN_HDL0, esp_power_level_t_ESP_PWR_LVL_N24,
+};
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex as stdMutex};
+
+use crate::delay::{delay_ms, delay_us};
+use crate::DEBOUNCE_DELAY;
 
 const KEYBOARD_ID: u8 = 0x01;
 const MEDIA_KEYS_ID: u8 = 0x02;
@@ -85,7 +95,7 @@ struct KeyReport {
     keys: [u8; 6],
 }
 
-pub struct Keyboard {
+pub struct BleKeyboard {
     server: &'static mut BLEServer,
     input_keyboard: Arc<Mutex<BLECharacteristic>>,
     output_keyboard: Arc<Mutex<BLECharacteristic>>,
@@ -93,7 +103,7 @@ pub struct Keyboard {
     key_report: KeyReport,
 }
 
-impl Keyboard {
+impl BleKeyboard {
     pub fn new() -> anyhow::Result<Self> {
         let device = BLEDevice::take();
         device
@@ -173,19 +183,95 @@ impl Keyboard {
         self.input_keyboard.lock().set_from(keys).notify();
         esp_idf_svc::hal::delay::Ets::delay_ms(7);
     }
+
+    fn set_ble_power_save(&mut self) {
+        /* set power save */
+        unsafe {
+            esp_idf_sys::esp_ble_tx_power_set(
+                esp_ble_power_type_t_ESP_BLE_PWR_TYPE_CONN_HDL0,
+                esp_power_level_t_ESP_PWR_LVL_N24,
+            );
+        }
+    }
+
+    pub async fn send_key(
+        &mut self,
+        keys_pressed: &Arc<stdMutex<HashMap<(i8, i8), Instant>>>,
+    ) -> ! {
+        /* initialize layers */
+        let mut layers = Layers::new();
+        layers.initialize_base_layer();
+
+        /* initialize modifier */
+        let mut modifier: u8 = 0;
+
+        /* initialize set_ble_power_flag */
+        let mut set_ble_power_flag = true;
+
+        /* Run the main loop */
+        loop {
+            if self.connected() {
+                /* set ble power save */
+                if set_ble_power_flag {
+                    /* set power save */
+                    self.set_ble_power_save();
+
+                    /* set flag to false */
+                    set_ble_power_flag = false;
+                }
+                /* store the keys that have been reported */
+                let mut keys_reported: Vec<(i8, i8)> = Vec::new();
+                /* try to lock the hashmap */
+                match keys_pressed.try_lock() {
+                    Ok(mut keys_pressed_locked) => {
+                        /* check if there are pressed keys */
+                        if !keys_pressed_locked.is_empty() {
+                            /* iter trough the pressed keys */
+                            for ((row, col), time_pressed) in keys_pressed_locked.iter() {
+                                /* check if the current key has valid debounce */
+                                if Instant::now() >= *time_pressed + DEBOUNCE_DELAY {
+                                    /* get the key from the layer */
+                                    if let Some(valid_key) = layers.base.get(&(*row, *col)) {
+                                        /* */
+                                        match *valid_key {
+                                            HidKeys::Shift => modifier |= HidKeys::Shift as u8,
+                                            HidKeys::Control => modifier |= HidKeys::Control as u8,
+                                            // HidKeys::Alt => modifier |= HidKeys::Alt,
+                                            // HidKeys::Super => modifier |= HidKeys::Super,
+                                            _ => {}
+                                        }
+
+                                        /* send the key */
+                                        self.press(*valid_key as u8, modifier as u8);
+                                        self.release();
+
+                                        /* store row and col */
+                                        keys_reported.push((*row, *col));
+                                    }
+                                }
+                            }
+
+                            for row_col in keys_reported.iter() {
+                                /* key reported - remove the key */
+                                keys_pressed_locked.remove(row_col);
+                            }
+
+                            /* reset the modifier */
+                            modifier = 0;
+                        }
+                    }
+                    Err(_) => {}
+                }
+
+                delay_us(10).await;
+            } else {
+                log::info!("Keyboard not connected!");
+
+                /* reset ble power save flag*/
+                set_ble_power_flag = true;
+
+                delay_ms(100).await;
+            }
+        }
+    }
 }
-
-// fn main() -> anyhow::Result<()> {
-//   esp_idf_svc::sys::link_patches();
-//   esp_idf_svc::log::EspLogger::initialize_default();
-
-//   let mut keyboard = Keyboard::new()?;
-
-//   loop {
-//     if keyboard.connected() {
-//       ::log::info!("Sending 'Hello world'...");
-//       keyboard.write("Hello world\n");
-//     }
-//     esp_idf_svc::hal::delay::FreeRtos::delay_ms(5000);
-//   }
-// }

@@ -11,17 +11,16 @@ X \ Y|  0  |  1  |  2  |  3  |  4  |  5  |           X \ Y|  0  |  1  |  2  |  3
 
 */
 use crate::enums::*;
+use delay::delay_us;
 use embassy_time::{Duration, Instant};
 use esp_idf_svc::hal::gpio::*;
 use esp_idf_svc::hal::peripherals::Peripherals;
 use esp_idf_sys::{
-    self as _, gpio_int_type_t_GPIO_INTR_HIGH_LEVEL, gpio_int_type_t_GPIO_INTR_LOW_LEVEL,
-    gpio_num_t_GPIO_NUM_10, gpio_num_t_GPIO_NUM_2, gpio_num_t_GPIO_NUM_3, gpio_num_t_GPIO_NUM_4,
-    gpio_num_t_GPIO_NUM_6, gpio_num_t_GPIO_NUM_7,
+    self as _, gpio_int_type_t_GPIO_INTR_HIGH_LEVEL, gpio_num_t_GPIO_NUM_10, gpio_num_t_GPIO_NUM_2,
+    gpio_num_t_GPIO_NUM_3, gpio_num_t_GPIO_NUM_4, gpio_num_t_GPIO_NUM_6, gpio_num_t_GPIO_NUM_7,
 };
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
-
 pub mod ble_keyboard;
 pub mod enums;
 
@@ -49,7 +48,8 @@ pub const SLEEP_DELAY_INIT: Duration = Duration::from_millis(30000);
 pub struct PinMatrix<'a> {
     pub rows: [PinDriver<'a, AnyOutputPin, Output>; ROWS],
     pub cols: [PinDriver<'a, AnyIOPin, Input>; COLS],
-    enter_sleep_delay: Instant,
+    pub enter_sleep_delay: Instant,
+    pub sleep_delay_key_pressed: bool,
 }
 
 impl PinMatrix<'_> {
@@ -73,6 +73,7 @@ impl PinMatrix<'_> {
                 PinDriver::input(peripherals.pins.gpio4.downgrade()).unwrap(),
             ],
             enter_sleep_delay: Instant::now() + SLEEP_DELAY_INIT,
+            sleep_delay_key_pressed: false,
         }
     }
 
@@ -93,6 +94,58 @@ impl PinMatrix<'_> {
         self.enter_sleep_delay = Instant::now() + SLEEP_DELAY;
     }
 
+    fn enter_sleep_mode(&mut self) {
+        /* enable interrupts */
+        self.set_enable_interrupts();
+
+        /* set the home row to high */
+        self.rows[2].set_high().unwrap();
+
+        /* enter sleep mode */
+        unsafe {
+            /* set gpios that can wake up the chip */
+            esp_idf_sys::gpio_wakeup_enable(
+                gpio_num_t_GPIO_NUM_2,
+                gpio_int_type_t_GPIO_INTR_HIGH_LEVEL,
+            );
+
+            esp_idf_sys::gpio_wakeup_enable(
+                gpio_num_t_GPIO_NUM_3,
+                gpio_int_type_t_GPIO_INTR_HIGH_LEVEL,
+            );
+            esp_idf_sys::gpio_wakeup_enable(
+                gpio_num_t_GPIO_NUM_10,
+                gpio_int_type_t_GPIO_INTR_HIGH_LEVEL,
+            );
+            esp_idf_sys::gpio_wakeup_enable(
+                gpio_num_t_GPIO_NUM_6,
+                gpio_int_type_t_GPIO_INTR_HIGH_LEVEL,
+            );
+            esp_idf_sys::gpio_wakeup_enable(
+                gpio_num_t_GPIO_NUM_7,
+                gpio_int_type_t_GPIO_INTR_HIGH_LEVEL,
+            );
+            esp_idf_sys::gpio_wakeup_enable(
+                gpio_num_t_GPIO_NUM_4,
+                gpio_int_type_t_GPIO_INTR_HIGH_LEVEL,
+            );
+
+            esp_idf_sys::esp_sleep_enable_gpio_switch(false);
+
+            esp_idf_sys::esp_sleep_enable_gpio_wakeup();
+
+            log::info!("Entering sleep...");
+
+            /* enter sleep */
+            esp_idf_sys::esp_light_sleep_start();
+
+            log::info!("Woke up...");
+
+            /* reset sleep delay */
+            self.reset_sleep_delay();
+        }
+    }
+
     pub async fn scan_grid(&mut self, keys_pressed: &Arc<Mutex<HashMap<(i8, i8), Instant>>>) -> ! {
         /* initialize interrupt */
         self.set_cols_interrupt();
@@ -101,60 +154,9 @@ impl PinMatrix<'_> {
         let mut row_count: i8 = 0;
         let mut col_count: i8 = 0;
 
-        /* initialize key_pressed */
-        let mut key_pressed = false;
-
         loop {
             if Instant::now() >= self.enter_sleep_delay {
-                /* enable interrupts */
-                self.set_enable_interrupts();
-
-                /* set the home row to high */
-                self.rows[2].set_high().unwrap();
-
-                /* enter sleep mode */
-                unsafe {
-                    /* set gpios that can wake up the chip */
-                    esp_idf_sys::gpio_wakeup_enable(
-                        gpio_num_t_GPIO_NUM_2,
-                        gpio_int_type_t_GPIO_INTR_HIGH_LEVEL,
-                    );
-
-                    esp_idf_sys::gpio_wakeup_enable(
-                        gpio_num_t_GPIO_NUM_3,
-                        gpio_int_type_t_GPIO_INTR_HIGH_LEVEL,
-                    );
-                    esp_idf_sys::gpio_wakeup_enable(
-                        gpio_num_t_GPIO_NUM_10,
-                        gpio_int_type_t_GPIO_INTR_HIGH_LEVEL,
-                    );
-                    esp_idf_sys::gpio_wakeup_enable(
-                        gpio_num_t_GPIO_NUM_6,
-                        gpio_int_type_t_GPIO_INTR_HIGH_LEVEL,
-                    );
-                    esp_idf_sys::gpio_wakeup_enable(
-                        gpio_num_t_GPIO_NUM_7,
-                        gpio_int_type_t_GPIO_INTR_HIGH_LEVEL,
-                    );
-                    esp_idf_sys::gpio_wakeup_enable(
-                        gpio_num_t_GPIO_NUM_4,
-                        gpio_int_type_t_GPIO_INTR_HIGH_LEVEL,
-                    );
-
-                    esp_idf_sys::esp_sleep_enable_gpio_switch(false);
-
-                    esp_idf_sys::esp_sleep_enable_gpio_wakeup();
-
-                    log::info!("Entering sleep...");
-
-                    /* enter sleep */
-                    esp_idf_sys::esp_light_sleep_start();
-
-                    log::info!("Woke up...");
-
-                    /* reset sleep delay */
-                    self.reset_sleep_delay();
-                }
+                self.enter_sleep_mode();
             } else {
                 /* check rows and cols */
                 for row in self.rows.iter_mut() {
@@ -162,18 +164,15 @@ impl PinMatrix<'_> {
                     row.set_high().unwrap();
 
                     /* delay so pin can propagate */
-                    delay::delay_us(10).await;
+                    delay_us(10).await;
 
                     /* check if a col is high */
                     for col in self.cols.iter() {
                         /* if a col is high */
                         if col.is_high() {
-                            log::info!("ArcMutex not yet locked");
                             /* lock the hashmap */
                             match keys_pressed.try_lock() {
                                 Ok(mut key_pressed_lock) => {
-                                    log::info!("ArcMutex Locked");
-
                                     /* check if the key has been pressed already*/
                                     if !key_pressed_lock.contains_key(&(row_count, col_count)) {
                                         /* store pressed keys */
@@ -185,14 +184,12 @@ impl PinMatrix<'_> {
                                 }
                                 Err(_) => {}
                             }
-
                             /* reset sleep delay if a key is pressed */
-                            key_pressed = true;
+                            self.sleep_delay_key_pressed = true;
                         }
                         /* increment col */
                         col_count += 1;
                     }
-
                     /* set row to low */
                     row.set_low().unwrap();
 
@@ -206,9 +203,9 @@ impl PinMatrix<'_> {
                 row_count = 0;
 
                 /* if a key has been pressed */
-                if key_pressed {
+                if self.sleep_delay_key_pressed {
                     /* reset key_pressed */
-                    key_pressed = false;
+                    self.sleep_delay_key_pressed = false;
 
                     /* reset sleep delay */
                     self.reset_sleep_delay();
