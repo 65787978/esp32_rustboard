@@ -199,7 +199,15 @@ impl BleKeyboard {
     ) -> ! {
         /* initialize layers */
         let mut layers = Layers::new();
-        layers.initialize_base_layer();
+
+        /* FOR LEFT SIDE KEYBOARD */
+        layers.initialize_base_layer_left_side();
+        layers.initialize_upper_layer_left_side();
+
+        /*  FOR RIGHT SIDE KEYBOARD
+                layers.initialize_base_layer_right_side();
+                layers.initialize_upper_layer_right_side();
+        */
 
         /* initialize modifier */
         let mut modifier: u8 = 0;
