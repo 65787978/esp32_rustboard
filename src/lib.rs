@@ -269,4 +269,73 @@ impl Layers {
         self.base.insert((4, 4), HidKeys::Shift); // SHIFT
         self.base.insert((4, 5), HidKeys::Space); // SPACE
     }
+
+    pub fn initialize_upper_layer(&mut self) {
+        self.upper.insert((0, 0), HidKeys::None); // NONE
+        self.upper.insert((0, 1), HidKeys::F1); // F1
+        self.upper.insert((0, 2), HidKeys::F2); // F2
+        self.upper.insert((0, 3), HidKeys::F3); // F3
+        self.upper.insert((0, 4), HidKeys::F4); // F4
+        self.upper.insert((0, 5), HidKeys::F5); // F5
+
+        self.upper.insert((1, 0), HidKeys::Tab); // TAB
+        self.upper.insert((1, 1), HidKeys::None); // NONE
+        self.upper.insert((1, 2), HidKeys::None); // NONE
+        self.upper.insert((1, 3), HidKeys::None); // NONE
+        self.upper.insert((1, 4), HidKeys::None); // NONE
+        self.upper.insert((1, 5), HidKeys::None); // NONE
+
+        self.upper.insert((2, 0), HidKeys::Capslock); // BACKSPACE
+        self.upper.insert((2, 1), HidKeys::None); // NONE
+        self.upper.insert((2, 2), HidKeys::None); // NONE
+        self.upper.insert((2, 3), HidKeys::None); // NONE
+        self.upper.insert((2, 4), HidKeys::None); // NONE
+        self.upper.insert((2, 5), HidKeys::None); // NONE
+
+        self.upper.insert((3, 0), HidKeys::None); // LAYER
+        self.upper.insert((3, 1), HidKeys::None); // NONE
+        self.upper.insert((3, 2), HidKeys::None); // NONE
+        self.upper.insert((3, 3), HidKeys::None); // NONE
+        self.upper.insert((3, 4), HidKeys::None); // NONE
+        self.upper.insert((3, 5), HidKeys::None); // NONE
+
+        self.upper.insert((4, 0), HidKeys::None); // NONE
+        self.upper.insert((4, 1), HidKeys::None); // NONE
+        self.upper.insert((4, 2), HidKeys::None); // NONE
+        self.upper.insert((4, 3), HidKeys::Control); // CONTROL
+        self.upper.insert((4, 4), HidKeys::Shift); // SHIFT
+        self.upper.insert((4, 5), HidKeys::Space); // SPACE
+    }
+
+    pub fn set_layer(&mut self, row: i8, col: i8) {
+        /* check if the key pressed is the layer key */
+        if (row, col) == LAYER_KEY {
+            /* change the layer */
+            match self.state {
+                Layer::Base => {
+                    self.state = Layer::Upper;
+                }
+                Layer::Upper => {
+                    self.state = Layer::Base;
+                }
+            }
+        }
+    }
+
+    pub fn get(&self, row: i8, col: i8) -> Option<&HidKeys> {
+        match self.state {
+            Layer::Base => self.base.get(&(row, col)),
+            Layer::Upper => self.upper.get(&(row, col)),
+        }
+    }
+
+    pub fn set_modifier(&self, key: &HidKeys, modifier: &mut u8) {
+        match *key {
+            HidKeys::Shift => *modifier |= HidKeys::Shift as u8,
+            HidKeys::Control => *modifier |= HidKeys::Control as u8,
+            // HidKeys::Alt => modifier |= HidKeys::Alt,
+            // HidKeys::Super => modifier |= HidKeys::Super,
+            _ => {}
+        }
+    }
 }

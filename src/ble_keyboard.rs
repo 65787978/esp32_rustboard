@@ -1,7 +1,6 @@
 // originally: https://github.com/T-vK/ESP32-BLE-Keyboard
 #![allow(dead_code)]
 
-use crate::enums::HidKeys;
 use crate::Layers;
 use embassy_time::Instant;
 use esp32_nimble::{
@@ -230,19 +229,16 @@ impl BleKeyboard {
                             for ((row, col), time_pressed) in keys_pressed_locked.iter() {
                                 /* check if the current key has valid debounce */
                                 if Instant::now() >= *time_pressed + DEBOUNCE_DELAY {
-                                    /* get the key from the layer */
-                                    if let Some(valid_key) = layers.base.get(&(*row, *col)) {
-                                        /* */
-                                        match *valid_key {
-                                            HidKeys::Shift => modifier |= HidKeys::Shift as u8,
-                                            HidKeys::Control => modifier |= HidKeys::Control as u8,
-                                            // HidKeys::Alt => modifier |= HidKeys::Alt,
-                                            // HidKeys::Super => modifier |= HidKeys::Super,
-                                            _ => {}
-                                        }
+                                    /* check and set the layer */
+                                    layers.set_layer(*row, *col);
+
+                                    /* get the pressed key */
+                                    if let Some(valid_key) = layers.get(*row, *col) {
+                                        /* check and set the modifier */
+                                        layers.set_modifier(valid_key, &mut modifier);
 
                                         /* send the key */
-                                        self.press(*valid_key as u8, modifier as u8);
+                                        self.press(*valid_key as u8, modifier);
                                         self.release();
 
                                         /* store row and col */
