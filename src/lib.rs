@@ -50,7 +50,8 @@ pub mod delay {
 /* USER CONFIGURABLE PARAMETERS */
 pub const ROWS: usize = 5;
 pub const COLS: usize = 6;
-pub const LAYER_KEY: (i8, i8) = (3, 0);
+pub const LAYER_KEY_LEFT_SIDE: (i8, i8) = (4, 3);
+pub const LAYER_KEY_RIGHT_SIDE: (i8, i8) = (4, 2);
 pub const DEBOUNCE_DELAY: Duration = Duration::from_millis(100);
 pub const SLEEP_DELAY: Duration = Duration::from_millis(15000);
 pub const SLEEP_DELAY_INIT: Duration = Duration::from_millis(30000);
@@ -234,6 +235,7 @@ pub struct Layers {
     pub base: HashMap<(i8, i8), HidKeys>,
     pub upper: HashMap<(i8, i8), HidKeys>,
     pub state: Layer,
+    layer_key: (i8, i8),
 }
 
 impl Layers {
@@ -242,6 +244,13 @@ impl Layers {
             base: HashMap::new(),
             upper: HashMap::new(),
             state: Layer::Base,
+            layer_key: {
+                if KEYBOARD_LEFT_SIDE {
+                    LAYER_KEY_LEFT_SIDE
+                } else {
+                    LAYER_KEY_RIGHT_SIDE
+                }
+            },
         }
     }
     pub fn initialize_base_layer_left(&mut self) {
@@ -394,7 +403,7 @@ impl Layers {
 
     pub fn set_layer(&mut self, row: i8, col: i8) {
         /* check if the key pressed is the layer key */
-        if (row, col) == LAYER_KEY {
+        if (row, col) == self.layer_key {
             /* change the layer */
             match self.state {
                 Layer::Base => {
