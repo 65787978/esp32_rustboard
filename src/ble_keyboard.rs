@@ -1,7 +1,10 @@
 // originally: https://github.com/T-vK/ESP32-BLE-Keyboard
 #![allow(dead_code)]
 
+use crate::delay::{delay_ms, delay_us};
 use crate::Layers;
+use crate::DEBOUNCE_DELAY;
+use crate::KEYBOARD_LEFT_SIDE;
 use embassy_time::Instant;
 use esp32_nimble::{
     enums::*, hid::*, utilities::mutex::Mutex, BLEAdvertisementData, BLECharacteristic, BLEDevice,
@@ -12,9 +15,6 @@ use esp_idf_sys::{
 };
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex as stdMutex};
-
-use crate::delay::{delay_ms, delay_us};
-use crate::DEBOUNCE_DELAY;
 
 const KEYBOARD_ID: u8 = 0x01;
 const MEDIA_KEYS_ID: u8 = 0x02;
@@ -200,14 +200,15 @@ impl BleKeyboard {
         /* initialize layers */
         let mut layers = Layers::new();
 
-        /* FOR LEFT SIDE KEYBOARD */
-        layers.initialize_base_layer_left_side();
-        layers.initialize_upper_layer_left_side();
-
-        /*  FOR RIGHT SIDE KEYBOARD
-                layers.initialize_base_layer_right_side();
-                layers.initialize_upper_layer_right_side();
-        */
+        if KEYBOARD_LEFT_SIDE {
+            /* For left side of the keyboard */
+            layers.initialize_base_layer_left();
+            layers.initialize_upper_layer_left();
+        } else {
+            /* For right side of the keyboard */
+            layers.initialize_base_layer_right();
+            layers.initialize_upper_layer_right();
+        }
 
         /* initialize modifier */
         let mut modifier: u8 = 0;

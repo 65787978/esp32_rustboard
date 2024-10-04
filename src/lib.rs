@@ -47,12 +47,14 @@ pub mod delay {
     }
 }
 
+/* USER CONFIGURABLE PARAMETERS */
 pub const ROWS: usize = 5;
 pub const COLS: usize = 6;
 pub const LAYER_KEY: (i8, i8) = (3, 0);
 pub const DEBOUNCE_DELAY: Duration = Duration::from_millis(50);
 pub const SLEEP_DELAY: Duration = Duration::from_millis(15000);
 pub const SLEEP_DELAY_INIT: Duration = Duration::from_millis(30000);
+pub const KEYBOARD_LEFT_SIDE: bool = true;
 
 pub struct PinMatrix<'a> {
     pub rows: [PinDriver<'a, AnyOutputPin, Output>; ROWS],
@@ -108,7 +110,7 @@ impl PinMatrix<'_> {
         self.set_enable_interrupts();
 
         /* set the home row to high */
-        self.rows[2].set_high().unwrap();
+        self.rows[0].set_high().unwrap();
 
         /* enter sleep mode */
         unsafe {
@@ -242,7 +244,7 @@ impl Layers {
             state: Layer::Base,
         }
     }
-    pub fn initialize_base_layer_left_side(&mut self) {
+    pub fn initialize_base_layer_left(&mut self) {
         self.base.insert((0, 0), HidKeys::Escape); // ESC
         self.base.insert((0, 1), HidKeys::Num1); // 1
         self.base.insert((0, 2), HidKeys::Num2); // 2
@@ -279,7 +281,7 @@ impl Layers {
         self.base.insert((4, 5), HidKeys::Space); // SPACE
     }
 
-    pub fn initialize_upper_layer_left_side(&mut self) {
+    pub fn initialize_upper_layer_left(&mut self) {
         self.upper.insert((0, 0), HidKeys::None); // NONE
         self.upper.insert((0, 1), HidKeys::F1); // F1
         self.upper.insert((0, 2), HidKeys::F2); // F2
@@ -316,34 +318,34 @@ impl Layers {
         self.upper.insert((4, 5), HidKeys::Space); // SPACE
     }
 
-    pub fn initialize_base_layer_right_side(&mut self) {
-        self.base.insert((0, 0), HidKeys::Escape); // 6
-        self.base.insert((0, 1), HidKeys::Num1); // 7
-        self.base.insert((0, 2), HidKeys::Num2); // 8
-        self.base.insert((0, 3), HidKeys::Num3); // 9
-        self.base.insert((0, 4), HidKeys::Num4); // 0
-        self.base.insert((0, 5), HidKeys::Num5); // \
+    pub fn initialize_base_layer_right(&mut self) {
+        self.base.insert((0, 0), HidKeys::Escape); // ESC
+        self.base.insert((0, 1), HidKeys::Num1); // 1
+        self.base.insert((0, 2), HidKeys::Num2); // 2
+        self.base.insert((0, 3), HidKeys::Num3); // 3
+        self.base.insert((0, 4), HidKeys::Num4); // 4
+        self.base.insert((0, 5), HidKeys::Num5); // 5
 
-        self.base.insert((1, 0), HidKeys::Tab); // f
-        self.base.insert((1, 1), HidKeys::Q); // g
-        self.base.insert((1, 2), HidKeys::W); // c
-        self.base.insert((1, 3), HidKeys::E); // r
-        self.base.insert((1, 4), HidKeys::R); // l
-        self.base.insert((1, 5), HidKeys::T); // /
+        self.base.insert((1, 0), HidKeys::Tab); // TAB
+        self.base.insert((1, 1), HidKeys::Q); // q
+        self.base.insert((1, 2), HidKeys::W); // w
+        self.base.insert((1, 3), HidKeys::E); // e
+        self.base.insert((1, 4), HidKeys::R); // r
+        self.base.insert((1, 5), HidKeys::T); // t
 
-        self.base.insert((2, 0), HidKeys::Capslock); // d
-        self.base.insert((2, 1), HidKeys::A); // h
-        self.base.insert((2, 2), HidKeys::S); // t
-        self.base.insert((2, 3), HidKeys::D); // n
-        self.base.insert((2, 4), HidKeys::F); // s
-        self.base.insert((2, 5), HidKeys::G); // -
+        self.base.insert((2, 0), HidKeys::Capslock); // BACKSPACE
+        self.base.insert((2, 1), HidKeys::A); // a
+        self.base.insert((2, 2), HidKeys::S); // s
+        self.base.insert((2, 3), HidKeys::D); // d
+        self.base.insert((2, 4), HidKeys::F); // f
+        self.base.insert((2, 5), HidKeys::G); // g
 
-        self.base.insert((3, 0), HidKeys::None); // b
-        self.base.insert((3, 1), HidKeys::Z); // m
-        self.base.insert((3, 2), HidKeys::X); // w
-        self.base.insert((3, 3), HidKeys::C); // v
-        self.base.insert((3, 4), HidKeys::V); // z
-        self.base.insert((3, 5), HidKeys::B); // =
+        self.base.insert((3, 0), HidKeys::None); // LAYER
+        self.base.insert((3, 1), HidKeys::Z); // z
+        self.base.insert((3, 2), HidKeys::X); // x
+        self.base.insert((3, 3), HidKeys::C); // c
+        self.base.insert((3, 4), HidKeys::V); // v
+        self.base.insert((3, 5), HidKeys::B); // b
 
         self.base.insert((4, 0), HidKeys::None); //
         self.base.insert((4, 1), HidKeys::None); //
@@ -353,7 +355,7 @@ impl Layers {
         self.base.insert((4, 5), HidKeys::Space); // SPACE
     }
 
-    pub fn initialize_upper_layer_right_side(&mut self) {
+    pub fn initialize_upper_layer_right(&mut self) {
         self.upper.insert((0, 0), HidKeys::None); // NONE
         self.upper.insert((0, 1), HidKeys::F1); // F1
         self.upper.insert((0, 2), HidKeys::F2); // F2
