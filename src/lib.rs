@@ -6,18 +6,18 @@ X \ Y|  0  |  1  |  2  |  3  |  4  |  5  |           X \ Y|  0  |  1  |  2  |  3
    0 |_ESC_|__1__|__2__|__3__|__4__|__5__|              0 |__6__|__7__|__8__|__9__|__0__|__\__|
    1 |_TAB_|__'__|__,__|__.__|__p__|__y__|              1 |__f__|__g__|__c__|__r__|__l__|__/__|
    2 |_BSP_|__a__|__o__|__e__|__u__|__i__|              2 |__d__|__h__|__t__|__n__|__s__|__-__|
-   3 |_LYR_|__;__|__q__|__j__|__k__|__x__|              3 |__b__|__m__|__w__|__v__|__z__|__=__|
-   4 |_____|_____|_____|_CTL_|_SFT_|_SPC_|              4 |_ENT_|_CTL_|_LYR_|_____|_____|_____|
+   3 |_CTL_|__;__|__q__|__j__|__k__|__x__|              3 |__b__|__m__|__w__|__v__|__z__|__=__|
+   4 |_____|_____|_____|_LYR_|_SFT_|_SPC_|              4 |_ENT_|_ALT_|_LYR_|_____|_____|_____|
 
 *********************************************************************************************
 UPPER LAYER:
 
 X \ Y|  0  |  1  |  2  |  3  |  4  |  5  |           X \ Y|  0  |  1  |  2  |  3  |  4  |  5  |
-   0 |_ESC_|_F1__|_F2__|_F3__|_F4__|_F5__|              0 |_____|_____|_____|_____|_____|__[__|
+   0 |_ESC_|_F1__|_F2__|_F3__|_F4__|_F5__|              0 |_F6__|_F7__|_F8__|_F9__|_F10_|__[__|
    1 |_TAB_|_____|_____|_____|_____|_____|              1 |_____|_____|_____|_____|_____|__]__|
    2 |_BSP_|_____|_____|_____|_____|_____|              2 |_____|_____|_____|_____|_____|_____|
-   3 |_LYR_|_____|_____|_____|_____|_____|              3 |_____|_____|_____|_____|_____|_____|
-   4 |_____|_____|_____|_CTL_|_SFT_|_SPC_|              4 |_ENT_|_CTL_|_LYR_|_____|_____|_____|
+   3 |_CTL_|_____|_____|_____|_____|_____|              3 |_____|_____|_____|_____|_____|_____|
+   4 |_____|_____|_____|_LYR_|_SFT_|_SPC_|              4 |_ENT_|_ALT_|_LYR_|_____|_____|_____|
 */
 use crate::enums::*;
 use delay::delay_us;
@@ -253,30 +253,30 @@ impl Layers {
         self.base.insert((0, 5), HidKeys::Num5); // 5
 
         self.base.insert((1, 0), HidKeys::Tab); // TAB
-        self.base.insert((1, 1), HidKeys::Q); // q
-        self.base.insert((1, 2), HidKeys::W); // w
-        self.base.insert((1, 3), HidKeys::E); // e
-        self.base.insert((1, 4), HidKeys::R); // r
-        self.base.insert((1, 5), HidKeys::T); // t
+        self.base.insert((1, 1), HidKeys::Quote); // '
+        self.base.insert((1, 2), HidKeys::Comma); // ,
+        self.base.insert((1, 3), HidKeys::Period); // .
+        self.base.insert((1, 4), HidKeys::P); // p
+        self.base.insert((1, 5), HidKeys::Y); // y
 
         self.base.insert((2, 0), HidKeys::Capslock); // BACKSPACE
         self.base.insert((2, 1), HidKeys::A); // a
-        self.base.insert((2, 2), HidKeys::S); // s
-        self.base.insert((2, 3), HidKeys::D); // d
-        self.base.insert((2, 4), HidKeys::F); // f
-        self.base.insert((2, 5), HidKeys::G); // g
+        self.base.insert((2, 2), HidKeys::O); // o
+        self.base.insert((2, 3), HidKeys::E); // e
+        self.base.insert((2, 4), HidKeys::U); // u
+        self.base.insert((2, 5), HidKeys::I); // i
 
-        self.base.insert((3, 0), HidKeys::None); // LAYER
-        self.base.insert((3, 1), HidKeys::Z); // z
-        self.base.insert((3, 2), HidKeys::X); // x
-        self.base.insert((3, 3), HidKeys::C); // c
-        self.base.insert((3, 4), HidKeys::V); // v
-        self.base.insert((3, 5), HidKeys::B); // b
+        self.base.insert((3, 0), HidKeys::Control); // CONTROL
+        self.base.insert((3, 1), HidKeys::SemiColon); // ;
+        self.base.insert((3, 2), HidKeys::Q); // q
+        self.base.insert((3, 3), HidKeys::J); // j
+        self.base.insert((3, 4), HidKeys::K); // k
+        self.base.insert((3, 5), HidKeys::X); // x
 
         self.base.insert((4, 0), HidKeys::None); //
         self.base.insert((4, 1), HidKeys::None); //
         self.base.insert((4, 2), HidKeys::None); //
-        self.base.insert((4, 3), HidKeys::Control); // CONTROL
+        self.base.insert((4, 3), HidKeys::None); // Layer
         self.base.insert((4, 4), HidKeys::Shift); // SHIFT
         self.base.insert((4, 5), HidKeys::Space); // SPACE
     }
@@ -303,7 +303,7 @@ impl Layers {
         self.upper.insert((2, 4), HidKeys::None); // NONE
         self.upper.insert((2, 5), HidKeys::None); // NONE
 
-        self.upper.insert((3, 0), HidKeys::None); // LAYER
+        self.upper.insert((3, 0), HidKeys::Control); // CONTROL
         self.upper.insert((3, 1), HidKeys::None); // NONE
         self.upper.insert((3, 2), HidKeys::None); // NONE
         self.upper.insert((3, 3), HidKeys::None); // NONE
@@ -313,83 +313,83 @@ impl Layers {
         self.upper.insert((4, 0), HidKeys::None); // NONE
         self.upper.insert((4, 1), HidKeys::None); // NONE
         self.upper.insert((4, 2), HidKeys::None); // NONE
-        self.upper.insert((4, 3), HidKeys::Control); // CONTROL
+        self.upper.insert((4, 3), HidKeys::None); // Layer
         self.upper.insert((4, 4), HidKeys::Shift); // SHIFT
         self.upper.insert((4, 5), HidKeys::Space); // SPACE
     }
 
     pub fn initialize_base_layer_right(&mut self) {
-        self.base.insert((0, 0), HidKeys::Escape); // ESC
-        self.base.insert((0, 1), HidKeys::Num1); // 1
-        self.base.insert((0, 2), HidKeys::Num2); // 2
-        self.base.insert((0, 3), HidKeys::Num3); // 3
-        self.base.insert((0, 4), HidKeys::Num4); // 4
-        self.base.insert((0, 5), HidKeys::Num5); // 5
+        self.base.insert((0, 0), HidKeys::Num6); // 6
+        self.base.insert((0, 1), HidKeys::Num7); // 7
+        self.base.insert((0, 2), HidKeys::Num8); // 8
+        self.base.insert((0, 3), HidKeys::Num9); // 9
+        self.base.insert((0, 4), HidKeys::Num0); // 0
+        self.base.insert((0, 5), HidKeys::Backslash); // \
 
-        self.base.insert((1, 0), HidKeys::Tab); // TAB
-        self.base.insert((1, 1), HidKeys::Q); // q
-        self.base.insert((1, 2), HidKeys::W); // w
-        self.base.insert((1, 3), HidKeys::E); // e
-        self.base.insert((1, 4), HidKeys::R); // r
-        self.base.insert((1, 5), HidKeys::T); // t
+        self.base.insert((1, 0), HidKeys::F); // f
+        self.base.insert((1, 1), HidKeys::G); // g
+        self.base.insert((1, 2), HidKeys::C); // c
+        self.base.insert((1, 3), HidKeys::R); // r
+        self.base.insert((1, 4), HidKeys::L); // l
+        self.base.insert((1, 5), HidKeys::Slash); // /
 
-        self.base.insert((2, 0), HidKeys::Capslock); // BACKSPACE
-        self.base.insert((2, 1), HidKeys::A); // a
-        self.base.insert((2, 2), HidKeys::S); // s
-        self.base.insert((2, 3), HidKeys::D); // d
-        self.base.insert((2, 4), HidKeys::F); // f
-        self.base.insert((2, 5), HidKeys::G); // g
+        self.base.insert((2, 0), HidKeys::D); // d
+        self.base.insert((2, 1), HidKeys::H); // h
+        self.base.insert((2, 2), HidKeys::T); // t
+        self.base.insert((2, 3), HidKeys::N); // n
+        self.base.insert((2, 4), HidKeys::S); // s
+        self.base.insert((2, 5), HidKeys::Minus); // -
 
-        self.base.insert((3, 0), HidKeys::None); // LAYER
-        self.base.insert((3, 1), HidKeys::Z); // z
-        self.base.insert((3, 2), HidKeys::X); // x
-        self.base.insert((3, 3), HidKeys::C); // c
-        self.base.insert((3, 4), HidKeys::V); // v
-        self.base.insert((3, 5), HidKeys::B); // b
+        self.base.insert((3, 0), HidKeys::B); // b
+        self.base.insert((3, 1), HidKeys::M); // m
+        self.base.insert((3, 2), HidKeys::W); // w
+        self.base.insert((3, 3), HidKeys::V); // v
+        self.base.insert((3, 4), HidKeys::Z); // z
+        self.base.insert((3, 5), HidKeys::Equal); // =
 
-        self.base.insert((4, 0), HidKeys::None); //
-        self.base.insert((4, 1), HidKeys::None); //
-        self.base.insert((4, 2), HidKeys::None); //
-        self.base.insert((4, 3), HidKeys::Control); // CONTROL
-        self.base.insert((4, 4), HidKeys::Shift); // SHIFT
-        self.base.insert((4, 5), HidKeys::Space); // SPACE
+        self.base.insert((4, 0), HidKeys::Enter); // ENTER
+        self.base.insert((4, 1), HidKeys::None); // ALT
+        self.base.insert((4, 2), HidKeys::None); // LAYER
+        self.base.insert((4, 3), HidKeys::None); // NONE
+        self.base.insert((4, 4), HidKeys::None); // NONE
+        self.base.insert((4, 5), HidKeys::None); // NONE
     }
 
     pub fn initialize_upper_layer_right(&mut self) {
-        self.upper.insert((0, 0), HidKeys::None); // NONE
-        self.upper.insert((0, 1), HidKeys::F1); // F1
-        self.upper.insert((0, 2), HidKeys::F2); // F2
-        self.upper.insert((0, 3), HidKeys::F3); // F3
-        self.upper.insert((0, 4), HidKeys::F4); // F4
-        self.upper.insert((0, 5), HidKeys::F5); // F5
+        self.upper.insert((0, 0), HidKeys::F6); // F6
+        self.upper.insert((0, 1), HidKeys::F7); // F7
+        self.upper.insert((0, 2), HidKeys::F8); // F8
+        self.upper.insert((0, 3), HidKeys::F9); // F9
+        self.upper.insert((0, 4), HidKeys::F10); // F10
+        self.upper.insert((0, 5), HidKeys::Lbracket); // [
 
-        self.upper.insert((1, 0), HidKeys::Tab); // TAB
+        self.upper.insert((1, 0), HidKeys::None); // NONE
         self.upper.insert((1, 1), HidKeys::None); // NONE
         self.upper.insert((1, 2), HidKeys::None); // NONE
         self.upper.insert((1, 3), HidKeys::None); // NONE
         self.upper.insert((1, 4), HidKeys::None); // NONE
-        self.upper.insert((1, 5), HidKeys::None); // NONE
+        self.upper.insert((1, 5), HidKeys::Rbracket); // ]
 
-        self.upper.insert((2, 0), HidKeys::Capslock); // BACKSPACE
+        self.upper.insert((2, 0), HidKeys::None); // NONE
         self.upper.insert((2, 1), HidKeys::None); // NONE
         self.upper.insert((2, 2), HidKeys::None); // NONE
         self.upper.insert((2, 3), HidKeys::None); // NONE
         self.upper.insert((2, 4), HidKeys::None); // NONE
         self.upper.insert((2, 5), HidKeys::None); // NONE
 
-        self.upper.insert((3, 0), HidKeys::None); // LAYER
+        self.upper.insert((3, 0), HidKeys::None); // NONE
         self.upper.insert((3, 1), HidKeys::None); // NONE
         self.upper.insert((3, 2), HidKeys::None); // NONE
         self.upper.insert((3, 3), HidKeys::None); // NONE
         self.upper.insert((3, 4), HidKeys::None); // NONE
         self.upper.insert((3, 5), HidKeys::None); // NONE
 
-        self.upper.insert((4, 0), HidKeys::None); // NONE
-        self.upper.insert((4, 1), HidKeys::None); // NONE
-        self.upper.insert((4, 2), HidKeys::None); // NONE
-        self.upper.insert((4, 3), HidKeys::Control); // CONTROL
-        self.upper.insert((4, 4), HidKeys::Shift); // SHIFT
-        self.upper.insert((4, 5), HidKeys::Space); // SPACE
+        self.upper.insert((4, 0), HidKeys::Enter); // ENTER
+        self.upper.insert((4, 1), HidKeys::None); // ALT
+        self.upper.insert((4, 2), HidKeys::None); // LAYER
+        self.upper.insert((4, 3), HidKeys::None); // NONE
+        self.upper.insert((4, 4), HidKeys::None); // NONE
+        self.upper.insert((4, 5), HidKeys::None); // NONE
     }
 
     pub fn set_layer(&mut self, row: i8, col: i8) {

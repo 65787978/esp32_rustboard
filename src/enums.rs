@@ -48,11 +48,11 @@ pub enum HidKeys {
     Space = 0x2C,
     Minus = 0x2D,
     Equal = 0x2E,
-    Lbracket = 0x2F,
-    Rbracket = 0x30,
-    Bslash = 0x31,    /* \ (and |) */
+    Lbracket = 0x2F,  /* [ and { */
+    Rbracket = 0x30,  /* ] and } */
+    Backslash = 0x31, /* \ (and |) */
     NonusHash = 0x32, /* Non-US # and ~ (Typically near the Enter key) */
-    Scolon = 0x33,    /* ; (and :) */
+    SemiColon = 0x33, /* ; (and :) */
     Quote = 0x34,     /* ' and " */
     Grave = 0x35,     /* Grave accent and tilde */
     Comma = 0x36,     /*  =  and < */
