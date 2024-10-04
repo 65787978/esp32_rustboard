@@ -56,7 +56,7 @@ pub enum HidKeys {
     Quote = 0x34,     /* ' and " */
     Grave = 0x35,     /* Grave accent and tilde */
     Comma = 0x36,     /*  =  and < */
-    Dot = 0x37,       /* . and > */
+    Period = 0x37,    /* . and > */
     Slash = 0x38,     /* / and ? */
     Capslock = 0x39,
     F1 = 0x3A,
