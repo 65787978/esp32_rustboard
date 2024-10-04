@@ -126,10 +126,18 @@ impl BleKeyboard {
 
         hid.set_battery_level(100);
 
+        let name: &str;
+
+        if KEYBOARD_LEFT_SIDE {
+            name = "ESP32_RUSTBOARD_LEFT";
+        } else {
+            name = "ESP32_RUSTBOARD_RIGHT";
+        }
+
         let ble_advertising = device.get_advertising();
         ble_advertising.lock().scan_response(false).set_data(
             BLEAdvertisementData::new()
-                .name("ESP32 Keyboard")
+                .name(name)
                 .appearance(0x03C1)
                 .add_service_uuid(hid.hid_service().lock().uuid()),
         )?;

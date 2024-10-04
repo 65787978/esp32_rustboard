@@ -8,7 +8,7 @@ use crate::ble_keyboard::*;
 use anyhow;
 use embassy_futures::select::select;
 use embassy_time::Instant;
-use esp32_rust_split_keyboard::*;
+use esp32_rustboard::*;
 use esp_idf_hal::task::block_on;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
