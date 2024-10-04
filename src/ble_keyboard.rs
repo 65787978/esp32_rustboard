@@ -216,6 +216,9 @@ impl BleKeyboard {
         /* initialize set_ble_power_flag */
         let mut set_ble_power_flag = true;
 
+        /* */
+        let mut prev_key: (i8, i8) = (0, 0);
+
         /* Run the main loop */
         loop {
             if self.connected() {
@@ -236,8 +239,28 @@ impl BleKeyboard {
                         if !keys_pressed_locked.is_empty() {
                             /* iter trough the pressed keys */
                             for ((row, col), time_pressed) in keys_pressed_locked.iter() {
+                                if prev_key != (*row, *col) {
+                                    /* store current row and col to prev_key */
+                                    prev_key = (*row, *col);
+
+                                    /* check and set the layer */
+                                    layers.set_layer(*row, *col);
+
+                                    /* get the pressed key */
+                                    if let Some(valid_key) = layers.get(*row, *col) {
+                                        /* check and set the modifier */
+                                        layers.set_modifier(valid_key, &mut modifier);
+
+                                        /* send the key */
+                                        self.press(*valid_key as u8, modifier);
+                                        self.release();
+
+                                        /* store row and col */
+                                        keys_reported.push((*row, *col));
+                                    }
+
                                 /* check if the current key has valid debounce */
-                                if Instant::now() >= *time_pressed + DEBOUNCE_DELAY {
+                                } else if Instant::now() >= *time_pressed + DEBOUNCE_DELAY {
                                     /* check and set the layer */
                                     layers.set_layer(*row, *col);
 
