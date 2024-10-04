@@ -2,7 +2,8 @@
 #![allow(dead_code)]
 
 use crate::delay::{delay_ms, delay_us};
-use crate::Layers;
+use crate::layers::Layers;
+
 use crate::DEBOUNCE_DELAY;
 use crate::KEYBOARD_LEFT_SIDE;
 use embassy_time::Instant;
@@ -15,7 +16,6 @@ use esp_idf_sys::{
 };
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex as stdMutex};
-
 const KEYBOARD_ID: u8 = 0x01;
 const MEDIA_KEYS_ID: u8 = 0x02;
 
@@ -260,7 +260,7 @@ impl BleKeyboard {
                                         layers.set_modifier(valid_key, &mut modifier);
 
                                         /* send the key */
-                                        self.press(*valid_key as u8, modifier);
+                                        self.press(*valid_key, modifier);
                                         self.release();
 
                                         /* store row and col */
@@ -278,7 +278,7 @@ impl BleKeyboard {
                                         layers.set_modifier(valid_key, &mut modifier);
 
                                         /* send the key */
-                                        self.press(*valid_key as u8, modifier);
+                                        self.press(*valid_key, modifier);
                                         self.release();
 
                                         /* store row and col */

@@ -166,8 +166,28 @@ pub enum HidKeys {
     ClearAgain = 0xA2,
     Crsel = 0xA3,
     Exsel = 0xA4,
-    Shift = 0x02,
-    Control = 0x01,
+    // Shift = 0x02,
+    // Control = 0x01,
     // Alt = 0x40,
     // Super = 0x08,
+}
+
+pub enum HidModifiers {
+    None = 0x00,
+    Shift = 0x01,
+    Control = 0x02,
+    Alt = 0x04,
+    Super = 0x08,
+}
+
+impl From<u8> for HidModifiers {
+    fn from(modifier: u8) -> Self {
+        match modifier {
+            0x01 => Self::Shift,
+            0x02 => Self::Control,
+            0x04 => Self::Alt,
+            0x08 => Self::Super,
+            _ => Self::None,
+        }
+    }
 }
