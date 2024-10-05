@@ -129,9 +129,9 @@ impl BleKeyboard {
         let name: &str;
 
         if KEYBOARD_LEFT_SIDE {
-            name = "ESP32_RUSTBOARD_LEFT";
+            name = "RUSTBOARD_LEFT";
         } else {
-            name = "ESP32_RUSTBOARD_RIGHT";
+            name = "RUSTBOARD_RIGHT";
         }
 
         let ble_advertising = device.get_advertising();
