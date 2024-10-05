@@ -203,7 +203,7 @@ impl BleKeyboard {
 
     pub async fn send_key(
         &mut self,
-        keys_pressed: &Arc<stdMutex<HashMap<(i8, i8), Instant>>>,
+        keys_pressed: &Arc<stdMutex<HashMap<(i8, i8), (Instant, bool)>>>,
     ) -> ! {
         /* initialize layers */
         let mut layers = Layers::new();
@@ -224,9 +224,6 @@ impl BleKeyboard {
         /* initialize set_ble_power_flag */
         let mut set_ble_power_flag = true;
 
-        /* */
-        let mut prev_key: (i8, i8) = (0, 0);
-
         /* Run the main loop */
         loop {
             if self.connected() {
@@ -238,19 +235,20 @@ impl BleKeyboard {
                     /* set flag to false */
                     set_ble_power_flag = false;
                 }
-                /* store the keys that have been reported */
-                let mut keys_reported: Vec<(i8, i8)> = Vec::new();
+
                 /* try to lock the hashmap */
                 match keys_pressed.try_lock() {
                     Ok(mut keys_pressed_locked) => {
+                        /* store the keys that need to be removed */
+                        let mut pressed_keys_to_remove = Vec::new();
+
                         /* check if there are pressed keys */
                         if !keys_pressed_locked.is_empty() {
                             /* iter trough the pressed keys */
-                            for ((row, col), time_pressed) in keys_pressed_locked.iter() {
-                                if prev_key != (*row, *col) {
-                                    /* store current row and col to prev_key */
-                                    prev_key = (*row, *col);
-
+                            for ((row, col), (time_pressed, is_reported)) in
+                                keys_pressed_locked.iter_mut()
+                            {
+                                if !*is_reported {
                                     /* check and set the layer */
                                     layers.set_layer(*row, *col);
 
@@ -262,38 +260,20 @@ impl BleKeyboard {
                                         /* send the key */
                                         self.press(*valid_key, modifier);
                                         self.release();
-
-                                        /* store row and col */
-                                        keys_reported.push((*row, *col));
                                     }
-
-                                /* check if the current key has valid debounce */
+                                    *is_reported = true;
                                 } else if Instant::now() >= *time_pressed + DEBOUNCE_DELAY {
-                                    /* check and set the layer */
-                                    layers.set_layer(*row, *col);
-
-                                    /* get the pressed key */
-                                    if let Some(valid_key) = layers.get(*row, *col) {
-                                        /* check and set the modifier */
-                                        layers.set_modifier(valid_key, &mut modifier);
-
-                                        /* send the key */
-                                        self.press(*valid_key, modifier);
-                                        self.release();
-
-                                        /* store row and col */
-                                        keys_reported.push((*row, *col));
-                                    }
+                                    pressed_keys_to_remove.push((*row, *col));
                                 }
-                            }
-
-                            for row_col in keys_reported.iter() {
-                                /* key reported - remove the key */
-                                keys_pressed_locked.remove(row_col);
                             }
 
                             /* reset the modifier */
                             modifier = 0;
+                        }
+
+                        /* remove pressed keys */
+                        for key_pressed in pressed_keys_to_remove.iter() {
+                            keys_pressed_locked.remove(&key_pressed);
                         }
                     }
                     Err(_) => {}

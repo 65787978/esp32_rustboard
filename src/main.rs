@@ -1,6 +1,6 @@
 /*
 to build: cargo build --release
-to flash: espflash flash ./target/riscv32imc-esp-espidf/release/esp32-rust-split-keyboard --monitor
+to flash: espflash flash ./target/riscv32imc-esp-espidf/release/esp32_rustboard --monitor
 */
 
 use crate::ble_keyboard::*;
@@ -28,7 +28,8 @@ fn main() -> anyhow::Result<()> {
     log::info!("Pin Matrix Initialized...");
 
     /* initialize keys pressed hashmap */
-    let keys_pressed: Arc<Mutex<HashMap<(i8, i8), Instant>>> = Arc::new(Mutex::new(HashMap::new()));
+    let keys_pressed: Arc<Mutex<HashMap<(i8, i8), (Instant, bool)>>> =
+        Arc::new(Mutex::new(HashMap::new()));
 
     /* run the tasks concurrently */
     block_on(async {

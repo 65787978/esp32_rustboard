@@ -31,7 +31,7 @@ pub const ROWS: usize = 5;
 pub const COLS: usize = 6;
 pub const LAYER_KEY_LEFT_SIDE: (i8, i8) = (4, 3);
 pub const LAYER_KEY_RIGHT_SIDE: (i8, i8) = (4, 2);
-pub const DEBOUNCE_DELAY: Duration = Duration::from_millis(100);
+pub const DEBOUNCE_DELAY: Duration = Duration::from_millis(200);
 pub const SLEEP_DELAY: Duration = Duration::from_millis(15000);
 pub const SLEEP_DELAY_INIT: Duration = Duration::from_millis(30000);
 pub const KEYBOARD_LEFT_SIDE: bool = true;
@@ -137,7 +137,10 @@ impl PinMatrix<'_> {
         }
     }
 
-    pub async fn scan_grid(&mut self, keys_pressed: &Arc<Mutex<HashMap<(i8, i8), Instant>>>) -> ! {
+    pub async fn scan_grid(
+        &mut self,
+        keys_pressed: &Arc<Mutex<HashMap<(i8, i8), (Instant, bool)>>>,
+    ) -> ! {
         /* initialize interrupt */
         self.set_cols_interrupt();
 
@@ -167,15 +170,17 @@ impl PinMatrix<'_> {
                                     /* check if the key has been pressed already*/
                                     if !key_pressed_lock.contains_key(&(row_count, col_count)) {
                                         /* store pressed keys */
-                                        key_pressed_lock
-                                            .insert((row_count, col_count), Instant::now());
+                                        key_pressed_lock.insert(
+                                            (row_count, col_count),
+                                            (Instant::now(), false),
+                                        );
 
                                         log::info!("Pressed keys stored!");
                                     }
                                 }
                                 Err(_) => {}
                             }
-                            /* reset sleep delay if a key is pressed */
+                            /* reset sleep delay if a key is pressed *///
                             self.sleep_delay_key_pressed = true;
                         }
                         /* increment col */
