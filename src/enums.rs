@@ -166,10 +166,6 @@ pub enum HidKeys {
     ClearAgain = 0xA2,
     Crsel = 0xA3,
     Exsel = 0xA4,
-    // Shift = 0x02,
-    // Control = 0x01,
-    // Alt = 0x40,
-    // Super = 0x08,
 }
 
 pub enum HidModifiers {

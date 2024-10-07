@@ -215,6 +215,7 @@ impl Layers {
     }
 
     pub fn get(&self, row: i8, col: i8) -> Option<&u8> {
+        /* provide the key depending on the layer */
         match self.state {
             Layer::Base => self.base.get(&(row, col)),
             Layer::Upper => self.upper.get(&(row, col)),
@@ -222,8 +223,10 @@ impl Layers {
     }
 
     pub fn set_modifier(&self, key: &u8, modifier: &mut u8) {
+        /* map the key to a modifier */
         let hid_modifier = HidModifiers::from(*key);
 
+        /* set the modifier */
         match hid_modifier {
             HidModifiers::Shift => *modifier |= HidModifiers::Shift as u8,
             HidModifiers::Control => *modifier |= HidModifiers::Control as u8,

@@ -160,13 +160,6 @@ impl BleKeyboard {
         self.server.connected_count() > 0
     }
 
-    // pub fn write(&mut self, str: &str) {
-    //     for char in str.as_bytes() {
-    //         self.press(*char);
-    //         self.release();
-    //     }
-    // }
-
     pub fn press(&mut self, char: u8, modifier: u8) {
         // let mut key = char;
         // if (key & SHIFT) > 0 {
@@ -248,6 +241,7 @@ impl BleKeyboard {
                             for ((row, col), (time_pressed, is_reported)) in
                                 keys_pressed_locked.iter_mut()
                             {
+                                /* check if the key is already reported */
                                 if !*is_reported {
                                     /* check and set the layer */
                                     layers.set_layer(*row, *col);
@@ -262,6 +256,8 @@ impl BleKeyboard {
                                         self.release();
                                     }
                                     *is_reported = true;
+
+                                /* if it is reported, and the debounce delay is over, add it to the remove list */
                                 } else if Instant::now() >= *time_pressed + DEBOUNCE_DELAY {
                                     pressed_keys_to_remove.push((*row, *col));
                                 }
@@ -286,6 +282,7 @@ impl BleKeyboard {
                 /* reset ble power save flag*/
                 set_ble_power_flag = true;
 
+                /* sleep for 100ms */
                 delay_ms(100).await;
             }
         }
