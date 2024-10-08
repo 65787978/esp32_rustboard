@@ -100,6 +100,7 @@ pub struct BleKeyboard {
     output_keyboard: Arc<Mutex<BLECharacteristic>>,
     input_media_keys: Arc<Mutex<BLECharacteristic>>,
     key_report: KeyReport,
+    key_count: usize,
 }
 
 impl BleKeyboard {
@@ -153,6 +154,7 @@ impl BleKeyboard {
                 reserved: 0,
                 keys: [0; 6],
             },
+            key_count: 0,
         })
     }
 
@@ -160,28 +162,34 @@ impl BleKeyboard {
         self.server.connected_count() > 0
     }
 
-    pub fn press(&mut self, char: u8, modifier: u8) {
-        // let mut key = char;
-        // if (key & SHIFT) > 0 {
-        //     self.key_report.modifiers |= 0x02;
-        //     key &= !SHIFT;
-        // }
+    // pub fn press(&mut self) {
+    //     // let mut key = char;
+    //     // if (key & SHIFT) > 0 {
+    //     //     self.key_report.modifiers |= 0x02;
+    //     //     key &= !SHIFT;
+    //     // }
 
-        self.key_report.modifiers = modifier;
-
-        self.key_report.keys[0] = char;
-        self.send_report(&self.key_report);
-    }
+    //     self.send_report(&self.key_report);
+    // }
 
     pub fn release(&mut self) {
+        /* clear the key count */
+        self.key_count = 0;
+
+        /* clear the key report */
         self.key_report.modifiers = 0;
         self.key_report.keys.fill(0);
-        self.send_report(&self.key_report);
+
+        /* send the report */
+        self.send_report();
     }
 
-    fn send_report(&self, keys: &KeyReport) {
-        self.input_keyboard.lock().set_from(keys).notify();
-        esp_idf_svc::hal::delay::Ets::delay_ms(7);
+    fn send_report(&mut self) {
+        self.input_keyboard
+            .lock()
+            .set_from(&self.key_report)
+            .notify();
+        esp_idf_svc::hal::delay::Ets::delay_ms(5);
     }
 
     fn set_ble_power_save(&mut self) {
@@ -210,9 +218,6 @@ impl BleKeyboard {
             layers.initialize_base_layer_right();
             layers.initialize_upper_layer_right();
         }
-
-        /* initialize modifier */
-        let mut modifier: u8 = 0;
 
         /* initialize set_ble_power_flag */
         let mut set_ble_power_flag = true;
@@ -249,13 +254,25 @@ impl BleKeyboard {
                                     /* get the pressed key */
                                     if let Some(valid_key) = layers.get(*row, *col) {
                                         /* check and set the modifier */
-                                        layers.set_modifier(valid_key, &mut modifier);
+                                        layers.set_modifier(
+                                            valid_key,
+                                            &mut self.key_report.modifiers,
+                                        );
 
-                                        /* send the key */
-                                        self.press(*valid_key, modifier);
-                                        self.release();
+                                        /* check if the key count is less than 6 */
+                                        if self.key_count < 6 {
+                                            /* set the key to the buffer */
+                                            self.key_report.keys[self.key_count] = *valid_key;
+
+                                            /* increment the key count */
+                                            self.key_count += 1;
+
+                                            /* set the key as reported */
+                                            *is_reported = true;
+                                        } else {
+                                            break;
+                                        }
                                     }
-                                    *is_reported = true;
 
                                 /* if it is reported, and the debounce delay is over, add it to the remove list */
                                 } else if Instant::now() >= *time_pressed + DEBOUNCE_DELAY {
@@ -263,13 +280,18 @@ impl BleKeyboard {
                                 }
                             }
 
-                            /* reset the modifier */
-                            modifier = 0;
+                            /* remove pressed keys */
+                            for key_pressed in pressed_keys_to_remove.iter() {
+                                keys_pressed_locked.remove(&key_pressed);
+                            }
                         }
 
-                        /* remove pressed keys */
-                        for key_pressed in pressed_keys_to_remove.iter() {
-                            keys_pressed_locked.remove(&key_pressed);
+                        if self.key_count > 0 {
+                            /* send the report */
+                            self.send_report();
+
+                            /* release the keys */
+                            self.release();
                         }
                     }
                     Err(_) => {}
