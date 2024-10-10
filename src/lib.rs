@@ -27,10 +27,10 @@ pub mod delay {
 }
 
 /* USER CONFIGURABLE PARAMETERS */
-pub const ROWS: usize = 5;
+pub const ROWS: usize = 4;
 pub const COLS: usize = 6;
-pub const LAYER_KEY_LEFT_SIDE: (i8, i8) = (4, 3);
-pub const LAYER_KEY_RIGHT_SIDE: (i8, i8) = (4, 2);
+pub const LAYER_KEY_LEFT_SIDE: (i8, i8) = (3, 3);
+pub const LAYER_KEY_RIGHT_SIDE: (i8, i8) = (3, 2);
 pub const DEBOUNCE_DELAY: Duration = Duration::from_millis(200);
 pub const SLEEP_DELAY: Duration = Duration::from_millis(15000);
 pub const SLEEP_DELAY_INIT: Duration = Duration::from_millis(30000);
@@ -53,7 +53,6 @@ impl PinMatrix<'_> {
                 PinDriver::output(peripherals.pins.gpio1.downgrade_output()).unwrap(),
                 PinDriver::output(peripherals.pins.gpio12.downgrade_output()).unwrap(),
                 PinDriver::output(peripherals.pins.gpio18.downgrade_output()).unwrap(),
-                PinDriver::output(peripherals.pins.gpio19.downgrade_output()).unwrap(),
             ],
             cols: [
                 PinDriver::input(peripherals.pins.gpio2.downgrade()).unwrap(),
