@@ -7,10 +7,10 @@ extern crate alloc;
 use crate::ble_keyboard::*;
 use alloc::sync::Arc;
 use anyhow;
-use embassy_futures::block_on;
 use embassy_futures::select::select;
 use embassy_time::Instant;
 use esp32_rustboard::*;
+use esp_idf_hal::task::block_on;
 use hashbrown::HashMap;
 use spin::Mutex;
 
