@@ -6,8 +6,12 @@ use esp_idf_sys::{
     self as _, gpio_int_type_t_GPIO_INTR_HIGH_LEVEL, gpio_num_t_GPIO_NUM_10, gpio_num_t_GPIO_NUM_2,
     gpio_num_t_GPIO_NUM_3, gpio_num_t_GPIO_NUM_4, gpio_num_t_GPIO_NUM_6, gpio_num_t_GPIO_NUM_7,
 };
-use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
+use hashbrown::HashMap;
+use spin::Mutex;
+extern crate alloc;
+
+use alloc::sync::Arc;
+
 pub mod ble_keyboard;
 pub mod enums;
 pub mod layers;
@@ -165,7 +169,7 @@ impl PinMatrix<'_> {
                         if col.is_high() {
                             /* lock the hashmap */
                             match keys_pressed.try_lock() {
-                                Ok(mut key_pressed_lock) => {
+                                Some(mut key_pressed_lock) => {
                                     /* check if the key has been pressed already*/
                                     if !key_pressed_lock.contains_key(&(row_count, col_count)) {
                                         /* store pressed keys */
@@ -177,7 +181,7 @@ impl PinMatrix<'_> {
                                         log::info!("Pressed keys stored!");
                                     }
                                 }
-                                Err(_) => {}
+                                None => {}
                             }
                             /* reset sleep delay if a key is pressed *///
                             self.sleep_delay_key_pressed = true;

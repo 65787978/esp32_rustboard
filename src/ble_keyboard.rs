@@ -3,9 +3,9 @@
 
 use crate::delay::{delay_ms, delay_us};
 use crate::layers::Layers;
-
 use crate::DEBOUNCE_DELAY;
 use crate::KEYBOARD_LEFT_SIDE;
+use alloc::sync::Arc;
 use embassy_time::Instant;
 use esp32_nimble::{
     enums::*, hid::*, utilities::mutex::Mutex, BLEAdvertisementData, BLECharacteristic, BLEDevice,
@@ -14,8 +14,9 @@ use esp32_nimble::{
 use esp_idf_sys::{
     esp_ble_power_type_t_ESP_BLE_PWR_TYPE_CONN_HDL0, esp_power_level_t_ESP_PWR_LVL_N24,
 };
-use std::collections::HashMap;
-use std::sync::{Arc, Mutex as stdMutex};
+use hashbrown::HashMap;
+use spin::Mutex as spinMutex;
+
 const KEYBOARD_ID: u8 = 0x01;
 const MEDIA_KEYS_ID: u8 = 0x02;
 
@@ -83,9 +84,6 @@ const HID_REPORT_DISCRIPTOR: &[u8] = hid!(
     (HIDINPUT, 0x02), // INPUT (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
     (END_COLLECTION), // END_COLLECTION
 );
-
-pub const SHIFT: u8 = 0x02;
-pub const ASCII_MAP: &[u8] = &[];
 
 #[repr(packed)]
 struct KeyReport {
@@ -204,7 +202,7 @@ impl BleKeyboard {
 
     pub async fn send_key(
         &mut self,
-        keys_pressed: &Arc<stdMutex<HashMap<(i8, i8), (Instant, bool)>>>,
+        keys_pressed: &Arc<spinMutex<HashMap<(i8, i8), (Instant, bool)>>>,
     ) -> ! {
         /* initialize layers */
         let mut layers = Layers::new();
@@ -236,7 +234,7 @@ impl BleKeyboard {
 
                 /* try to lock the hashmap */
                 match keys_pressed.try_lock() {
-                    Ok(mut keys_pressed_locked) => {
+                    Some(mut keys_pressed_locked) => {
                         /* store the keys that need to be removed */
                         let mut pressed_keys_to_remove = Vec::new();
 
@@ -282,7 +280,7 @@ impl BleKeyboard {
 
                             /* remove pressed keys */
                             for key_pressed in pressed_keys_to_remove.iter() {
-                                keys_pressed_locked.remove(&key_pressed);
+                                keys_pressed_locked.remove(key_pressed);
                             }
                         }
 
@@ -294,7 +292,7 @@ impl BleKeyboard {
                             self.release();
                         }
                     }
-                    Err(_) => {}
+                    None => {}
                 }
 
                 delay_us(10).await;

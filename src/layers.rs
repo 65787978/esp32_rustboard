@@ -23,7 +23,7 @@ use crate::enums::*;
 use crate::KEYBOARD_LEFT_SIDE;
 use crate::LAYER_KEY_LEFT_SIDE;
 use crate::LAYER_KEY_RIGHT_SIDE;
-use std::collections::HashMap;
+use hashbrown::HashMap;
 
 pub enum Layer {
     Base,
