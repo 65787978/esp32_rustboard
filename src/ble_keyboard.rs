@@ -1,5 +1,6 @@
 // originally: https://github.com/T-vK/ESP32-BLE-Keyboard
 #![allow(dead_code)]
+extern crate alloc;
 
 use crate::delay::{delay_ms, delay_us};
 use crate::layers::Layers;
@@ -193,8 +194,8 @@ impl BleKeyboard {
 
     pub async fn send_key(
         &mut self,
-        keys_pressed: &Arc<
-            spinMutex<FnvIndexMap<(i8, i8), (Instant, bool), PRESSED_KEYS_INDEXMAP_SIZE>>,
+        keys_pressed: &spinMutex<
+            FnvIndexMap<(i8, i8), (Instant, bool), PRESSED_KEYS_INDEXMAP_SIZE>,
         >,
     ) -> ! {
         /* initialize layers */

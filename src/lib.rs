@@ -8,9 +8,6 @@ use esp_idf_sys::{
 };
 use heapless::FnvIndexMap;
 use spin::Mutex;
-extern crate alloc;
-
-use alloc::sync::Arc;
 
 pub mod ble_keyboard;
 pub mod enums;
@@ -144,9 +141,7 @@ impl PinMatrix<'_> {
 
     pub async fn scan_grid(
         &mut self,
-        keys_pressed: &Arc<
-            Mutex<FnvIndexMap<(i8, i8), (Instant, bool), PRESSED_KEYS_INDEXMAP_SIZE>>,
-        >,
+        keys_pressed: &Mutex<FnvIndexMap<(i8, i8), (Instant, bool), PRESSED_KEYS_INDEXMAP_SIZE>>,
     ) -> ! {
         /* initialize interrupt */
         self.set_cols_interrupt();

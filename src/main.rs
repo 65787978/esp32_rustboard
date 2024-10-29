@@ -2,10 +2,8 @@
 to build: cargo build --release
 to flash: espflash flash ./target/riscv32imc-esp-espidf/release/esp32_rustboard --monitor
 */
-extern crate alloc;
 
 use crate::ble_keyboard::*;
-use alloc::sync::Arc;
 use anyhow;
 use embassy_futures::select::select;
 use embassy_time::Instant;
@@ -29,9 +27,8 @@ fn main() -> anyhow::Result<()> {
     log::info!("Pin Matrix Initialized...");
 
     /* initialize keys pressed hashmap */
-    let keys_pressed: Arc<
-        Mutex<FnvIndexMap<(i8, i8), (Instant, bool), PRESSED_KEYS_INDEXMAP_SIZE>>,
-    > = Arc::new(Mutex::new(FnvIndexMap::new()));
+    let keys_pressed: Mutex<FnvIndexMap<(i8, i8), (Instant, bool), PRESSED_KEYS_INDEXMAP_SIZE>> =
+        Mutex::new(FnvIndexMap::new());
 
     /* run the tasks concurrently */
     block_on(async {
