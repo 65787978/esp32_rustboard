@@ -10,12 +10,8 @@ use anyhow;
 use embassy_futures::select::select;
 use embassy_time::Instant;
 use esp32_rustboard::*;
-<<<<<<< HEAD
-use heapless::FnvIndexMap;
-=======
 use esp_idf_hal::task::block_on;
-use hashbrown::HashMap;
->>>>>>> a2e68e9eaa41d5ed7df04f85f819ba7df8012d74
+use heapless::FnvIndexMap;
 use spin::Mutex;
 
 fn main() -> anyhow::Result<()> {
