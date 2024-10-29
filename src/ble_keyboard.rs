@@ -5,6 +5,7 @@ use crate::delay::{delay_ms, delay_us};
 use crate::layers::Layers;
 use crate::DEBOUNCE_DELAY;
 use crate::KEYBOARD_LEFT_SIDE;
+use crate::PRESSED_KEYS_INDEXMAP_SIZE;
 use alloc::sync::Arc;
 use embassy_time::Instant;
 use esp32_nimble::{
@@ -14,7 +15,7 @@ use esp32_nimble::{
 use esp_idf_sys::{
     esp_ble_power_type_t_ESP_BLE_PWR_TYPE_CONN_HDL0, esp_power_level_t_ESP_PWR_LVL_N24,
 };
-use hashbrown::HashMap;
+use heapless::FnvIndexMap;
 use spin::Mutex as spinMutex;
 
 const KEYBOARD_ID: u8 = 0x01;
@@ -160,16 +161,6 @@ impl BleKeyboard {
         self.server.connected_count() > 0
     }
 
-    // pub fn press(&mut self) {
-    //     // let mut key = char;
-    //     // if (key & SHIFT) > 0 {
-    //     //     self.key_report.modifiers |= 0x02;
-    //     //     key &= !SHIFT;
-    //     // }
-
-    //     self.send_report(&self.key_report);
-    // }
-
     pub fn release(&mut self) {
         /* clear the key count */
         self.key_count = 0;
@@ -202,7 +193,9 @@ impl BleKeyboard {
 
     pub async fn send_key(
         &mut self,
-        keys_pressed: &Arc<spinMutex<HashMap<(i8, i8), (Instant, bool)>>>,
+        keys_pressed: &Arc<
+            spinMutex<FnvIndexMap<(i8, i8), (Instant, bool), PRESSED_KEYS_INDEXMAP_SIZE>>,
+        >,
     ) -> ! {
         /* initialize layers */
         let mut layers = Layers::new();
@@ -247,10 +240,10 @@ impl BleKeyboard {
                                 /* check if the key is already reported */
                                 if !*is_reported {
                                     /* check and set the layer */
-                                    layers.set_layer(*row, *col);
+                                    layers.set_layer(row, col);
 
                                     /* get the pressed key */
-                                    if let Some(valid_key) = layers.get(*row, *col) {
+                                    if let Some(valid_key) = layers.get(row, col) {
                                         /* check and set the modifier */
                                         layers.set_modifier(
                                             valid_key,
@@ -280,7 +273,7 @@ impl BleKeyboard {
 
                             /* remove pressed keys */
                             for key_pressed in pressed_keys_to_remove.iter() {
-                                keys_pressed_locked.remove(key_pressed);
+                                keys_pressed_locked.remove(key_pressed).unwrap();
                             }
                         }
 

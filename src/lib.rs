@@ -6,7 +6,7 @@ use esp_idf_sys::{
     self as _, gpio_int_type_t_GPIO_INTR_HIGH_LEVEL, gpio_num_t_GPIO_NUM_10, gpio_num_t_GPIO_NUM_2,
     gpio_num_t_GPIO_NUM_3, gpio_num_t_GPIO_NUM_4, gpio_num_t_GPIO_NUM_6, gpio_num_t_GPIO_NUM_7,
 };
-use hashbrown::HashMap;
+use heapless::FnvIndexMap;
 use spin::Mutex;
 extern crate alloc;
 
@@ -39,6 +39,8 @@ pub const DEBOUNCE_DELAY: Duration = Duration::from_millis(200);
 pub const SLEEP_DELAY: Duration = Duration::from_millis(15000);
 pub const SLEEP_DELAY_INIT: Duration = Duration::from_millis(30000);
 pub const KEYBOARD_LEFT_SIDE: bool = true;
+pub const PRESSED_KEYS_INDEXMAP_SIZE: usize = 16;
+pub const LAYER_INDEXMAP_SIZE: usize = 32;
 
 pub struct PinMatrix<'a> {
     pub rows: [PinDriver<'a, AnyOutputPin, Output>; ROWS],
@@ -142,7 +144,9 @@ impl PinMatrix<'_> {
 
     pub async fn scan_grid(
         &mut self,
-        keys_pressed: &Arc<Mutex<HashMap<(i8, i8), (Instant, bool)>>>,
+        keys_pressed: &Arc<
+            Mutex<FnvIndexMap<(i8, i8), (Instant, bool), PRESSED_KEYS_INDEXMAP_SIZE>>,
+        >,
     ) -> ! {
         /* initialize interrupt */
         self.set_cols_interrupt();
@@ -173,10 +177,9 @@ impl PinMatrix<'_> {
                                     /* check if the key has been pressed already*/
                                     if !key_pressed_lock.contains_key(&(row_count, col_count)) {
                                         /* store pressed keys */
-                                        key_pressed_lock.insert(
-                                            (row_count, col_count),
-                                            (Instant::now(), false),
-                                        );
+                                        key_pressed_lock
+                                            .insert((row_count, col_count), (Instant::now(), false))
+                                            .unwrap();
 
                                         log::info!("Pressed keys stored!");
                                     }
