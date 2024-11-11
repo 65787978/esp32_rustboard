@@ -4,8 +4,8 @@ to flash: espflash flash ./target/riscv32imc-esp-espidf/release/esp32_rustboard 
 */
 
 use anyhow;
+use embassy_futures::join::join;
 use embassy_futures::select::select;
-use embassy_time::Instant;
 use esp32_rustboard::*;
 use esp_idf_hal::task::block_on;
 use heapless::FnvIndexMap;
@@ -13,6 +13,7 @@ use spin::Mutex;
 
 use crate::ble::BleKeyboard;
 use crate::config::config::*;
+use crate::debounce::*;
 use crate::matrix::PinMatrix;
 
 fn main() -> anyhow::Result<()> {
@@ -30,14 +31,17 @@ fn main() -> anyhow::Result<()> {
     log::info!("Pin Matrix Initialized...");
 
     /* initialize keys pressed hashmap */
-    let keys_pressed: Mutex<FnvIndexMap<(i8, i8), (Instant, bool), PRESSED_KEYS_INDEXMAP_SIZE>> =
+    let keys_pressed: Mutex<FnvIndexMap<(i8, i8), Debounce, PRESSED_KEYS_INDEXMAP_SIZE>> =
         Mutex::new(FnvIndexMap::new());
 
     /* run the tasks concurrently */
     block_on(async {
         select(
             ble_keyboard.send_key(&keys_pressed),
-            pin_matrix.scan_grid(&keys_pressed),
+            join(
+                pin_matrix.scan_grid(&keys_pressed),
+                calculate_debounce(&keys_pressed),
+            ),
         )
         .await;
     });

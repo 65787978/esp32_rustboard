@@ -3,10 +3,10 @@
 extern crate alloc;
 
 use crate::config::{config::*, layers::*};
+use crate::debounce::Debounce;
 use crate::delay::*;
 
 use alloc::sync::Arc;
-use embassy_time::Instant;
 use esp32_nimble::{
     enums::*, hid::*, utilities::mutex::Mutex, BLEAdvertisementData, BLECharacteristic, BLEDevice,
     BLEHIDDevice, BLEServer,
@@ -192,9 +192,7 @@ impl BleKeyboard {
 
     pub async fn send_key(
         &mut self,
-        keys_pressed: &spinMutex<
-            FnvIndexMap<(i8, i8), (Instant, bool), PRESSED_KEYS_INDEXMAP_SIZE>,
-        >,
+        keys_pressed: &spinMutex<FnvIndexMap<(i8, i8), Debounce, PRESSED_KEYS_INDEXMAP_SIZE>>,
     ) -> ! {
         /* initialize layers */
         let mut layers = Layers::new();
@@ -233,11 +231,9 @@ impl BleKeyboard {
                         /* check if there are pressed keys */
                         if !keys_pressed_locked.is_empty() {
                             /* iter trough the pressed keys */
-                            for ((row, col), (time_pressed, is_reported)) in
-                                keys_pressed_locked.iter_mut()
-                            {
-                                /* check if the key is already reported */
-                                if !*is_reported {
+                            for ((row, col), debounce) in keys_pressed_locked.iter_mut() {
+                                /* check if the key is calculated for debounce */
+                                if debounce.key_debounced {
                                     /* check and set the layer */
                                     layers.set_layer(row, col);
 
@@ -257,16 +253,12 @@ impl BleKeyboard {
                                             /* increment the key count */
                                             self.key_count += 1;
 
-                                            /* set the key as reported */
-                                            *is_reported = true;
+                                            /* store the keys which have been stored for sending */
+                                            pressed_keys_to_remove.push((*row, *col));
                                         } else {
                                             break;
                                         }
                                     }
-
-                                /* if it is reported, and the debounce delay is over, add it to the remove list */
-                                } else if Instant::now() >= *time_pressed + DEBOUNCE_DELAY {
-                                    pressed_keys_to_remove.push((*row, *col));
                                 }
                             }
 

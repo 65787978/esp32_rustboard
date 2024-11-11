@@ -1,5 +1,5 @@
-use crate::config::config::*;
 use crate::delay::*;
+use crate::{config::config::*, debounce::Debounce};
 use embassy_time::Instant;
 use esp_idf_svc::hal::gpio::*;
 use esp_idf_svc::hal::peripherals::Peripherals;
@@ -112,7 +112,7 @@ impl PinMatrix<'_> {
 
     pub async fn scan_grid(
         &mut self,
-        keys_pressed: &Mutex<FnvIndexMap<(i8, i8), (Instant, bool), PRESSED_KEYS_INDEXMAP_SIZE>>,
+        keys_pressed: &Mutex<FnvIndexMap<(i8, i8), Debounce, PRESSED_KEYS_INDEXMAP_SIZE>>,
     ) -> ! {
         /* initialize interrupt */
         self.set_cols_interrupt();
@@ -138,21 +138,24 @@ impl PinMatrix<'_> {
                         /* if a col is high */
                         if col.is_high() {
                             /* lock the hashmap */
-                            match keys_pressed.try_lock() {
-                                Some(mut key_pressed_lock) => {
-                                    /* check if the key has been pressed already*/
-                                    if !key_pressed_lock.contains_key(&(row_count, col_count)) {
-                                        /* store pressed keys */
-                                        key_pressed_lock
-                                            .insert((row_count, col_count), (Instant::now(), false))
-                                            .unwrap();
+                            if let Some(mut keys_pressed) = keys_pressed.try_lock() {
+                                /* check if the key has been pressed already*/
+                                if !keys_pressed.contains_key(&(row_count, col_count)) {
+                                    /* store pressed keys */
+                                    keys_pressed
+                                        .insert(
+                                            (row_count, col_count),
+                                            Debounce {
+                                                key_pressed_time: Instant::now(),
+                                                key_debounced: false,
+                                            },
+                                        )
+                                        .unwrap();
 
-                                        log::info!("Pressed keys stored!");
-                                    }
+                                    log::info!("Pressed keys stored!");
                                 }
-                                None => {}
                             }
-                            /* reset sleep delay if a key is pressed *///
+                            /* reset sleep delay if a key is pressed */
                             self.sleep_delay_key_pressed = true;
                         }
                         /* increment col */
