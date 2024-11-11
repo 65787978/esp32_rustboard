@@ -2,11 +2,9 @@
 #![allow(dead_code)]
 extern crate alloc;
 
-use crate::delay::{delay_ms, delay_us};
-use crate::layers::Layers;
-use crate::DEBOUNCE_DELAY;
-use crate::KEYBOARD_LEFT_SIDE;
-use crate::PRESSED_KEYS_INDEXMAP_SIZE;
+use crate::config::{config::*, layers::*};
+use crate::delay::*;
+
 use alloc::sync::Arc;
 use embassy_time::Instant;
 use esp32_nimble::{

@@ -3,7 +3,6 @@ to build: cargo build --release
 to flash: espflash flash ./target/riscv32imc-esp-espidf/release/esp32_rustboard --monitor
 */
 
-use crate::ble_keyboard::*;
 use anyhow;
 use embassy_futures::select::select;
 use embassy_time::Instant;
@@ -11,6 +10,10 @@ use esp32_rustboard::*;
 use esp_idf_hal::task::block_on;
 use heapless::FnvIndexMap;
 use spin::Mutex;
+
+use crate::ble::BleKeyboard;
+use crate::config::config::*;
+use crate::matrix::PinMatrix;
 
 fn main() -> anyhow::Result<()> {
     esp_idf_svc::sys::link_patches();

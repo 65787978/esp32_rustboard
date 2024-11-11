@@ -19,11 +19,8 @@ X \ Y|  0  |  1  |  2  |  3  |  4  |  5  |           X \ Y|  0  |  1  |  2  |  3
 
 *********************************************************************************************
 */
-use crate::enums::*;
-use crate::KEYBOARD_LEFT_SIDE;
-use crate::LAYER_INDEXMAP_SIZE;
-use crate::LAYER_KEY_LEFT_SIDE;
-use crate::LAYER_KEY_RIGHT_SIDE;
+use crate::config::{config::*, enums::*};
+
 use heapless::FnvIndexMap;
 pub enum Layer {
     Base,
