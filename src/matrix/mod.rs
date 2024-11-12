@@ -10,6 +10,12 @@ use esp_idf_sys::{
 use heapless::FnvIndexMap;
 use spin::Mutex;
 
+#[derive(Eq, Hash, PartialEq, Clone, Copy, Debug)]
+pub struct Key {
+    pub row: i8,
+    pub col: i8,
+}
+
 pub struct PinMatrix<'a> {
     pub rows: [PinDriver<'a, AnyOutputPin, Output>; ROWS],
     pub cols: [PinDriver<'a, AnyIOPin, Input>; COLS],
@@ -109,78 +115,86 @@ impl PinMatrix<'_> {
             self.reset_sleep_delay();
         }
     }
+}
 
-    pub async fn scan_grid(
-        &mut self,
-        keys_pressed: &Mutex<FnvIndexMap<(i8, i8), Debounce, PRESSED_KEYS_INDEXMAP_SIZE>>,
-    ) -> ! {
-        /* initialize interrupt */
-        self.set_cols_interrupt();
+pub async fn scan_grid(
+    keys_pressed: &Mutex<FnvIndexMap<Key, Debounce, PRESSED_KEYS_INDEXMAP_SIZE>>,
+) -> ! {
+    /* construct the matrix */
+    let mut matrix = PinMatrix::new();
 
-        /* initialize counts */
-        let mut row_count: i8 = 0;
-        let mut col_count: i8 = 0;
+    /* initialize interrupt */
+    matrix.set_cols_interrupt();
 
-        loop {
-            if Instant::now() >= self.enter_sleep_delay {
-                self.enter_sleep_mode();
-            } else {
-                /* check rows and cols */
-                for row in self.rows.iter_mut() {
-                    /* set row to high */
-                    row.set_high().unwrap();
+    /* initialize counts */
+    let mut row_count: i8 = 0;
+    let mut col_count: i8 = 0;
 
-                    /* delay so pin can propagate */
-                    delay_us(10).await;
+    loop {
+        if Instant::now() >= matrix.enter_sleep_delay {
+            matrix.enter_sleep_mode();
+        } else {
+            /* check rows and cols */
+            for row in matrix.rows.iter_mut() {
+                /* set row to high */
+                row.set_high().unwrap();
 
-                    /* check if a col is high */
-                    for col in self.cols.iter() {
-                        /* if a col is high */
-                        if col.is_high() {
-                            /* lock the hashmap */
-                            if let Some(mut keys_pressed) = keys_pressed.try_lock() {
-                                /* check if the key has been pressed already*/
-                                if !keys_pressed.contains_key(&(row_count, col_count)) {
-                                    /* store pressed keys */
-                                    keys_pressed
-                                        .insert(
-                                            (row_count, col_count),
-                                            Debounce {
-                                                key_pressed_time: Instant::now(),
-                                                key_debounced: false,
-                                            },
-                                        )
-                                        .unwrap();
+                /* delay so pin can propagate */
+                delay_us(10).await;
 
-                                    log::info!("Pressed keys stored!");
-                                }
+                /* check if a col is high */
+                for col in matrix.cols.iter() {
+                    /* if a col is high */
+                    if col.is_high() {
+                        /* lock the hashmap */
+                        if let Some(mut keys_pressed) = keys_pressed.try_lock() {
+                            /* check if the key has been pressed already*/
+                            if !keys_pressed.contains_key(&Key {
+                                row: row_count,
+                                col: col_count,
+                            }) {
+                                /* store pressed keys */
+                                keys_pressed
+                                    .insert(
+                                        Key {
+                                            row: row_count,
+                                            col: col_count,
+                                        },
+                                        Debounce {
+                                            key_pressed_time: Instant::now(),
+                                            key_debounced: false,
+                                        },
+                                    )
+                                    .unwrap();
+
+                                log::info!("Pressed keys stored!");
                             }
-                            /* reset sleep delay if a key is pressed */
-                            self.sleep_delay_key_pressed = true;
                         }
-                        /* increment col */
-                        col_count += 1;
+                        /* reset sleep delay if a key is pressed */
+                        matrix.sleep_delay_key_pressed = true;
                     }
-                    /* set row to low */
-                    row.set_low().unwrap();
-
-                    /* increment row */
-                    row_count += 1;
-
-                    /* reset col count */
-                    col_count = 0;
+                    /* increment col */
+                    col_count += 1;
                 }
-                /* reset row count */
-                row_count = 0;
+                /* set row to low */
+                row.set_low().unwrap();
 
-                /* if a key has been pressed */
-                if self.sleep_delay_key_pressed {
-                    /* reset key_pressed */
-                    self.sleep_delay_key_pressed = false;
+                /* increment row */
+                row_count += 1;
 
-                    /* reset sleep delay */
-                    self.reset_sleep_delay();
-                }
+                /* reset col count */
+                col_count = 0;
+            }
+            /* reset row count */
+            row_count = 0;
+
+            /* if a key has been pressed */
+            if matrix.sleep_delay_key_pressed {
+                /* reset key_pressed */
+                matrix.sleep_delay_key_pressed = false;
+
+                /* reset sleep delay */
+                matrix.reset_sleep_delay();
             }
         }
     }

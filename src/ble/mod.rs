@@ -5,6 +5,7 @@ extern crate alloc;
 use crate::config::{config::*, layers::*};
 use crate::debounce::Debounce;
 use crate::delay::*;
+use crate::matrix::Key;
 
 use alloc::sync::Arc;
 use esp32_nimble::{
@@ -102,7 +103,7 @@ pub struct BleKeyboard {
 }
 
 impl BleKeyboard {
-    pub fn new() -> anyhow::Result<Self> {
+    pub fn new() -> Self {
         let device = BLEDevice::take();
         device
             .security()
@@ -134,15 +135,19 @@ impl BleKeyboard {
         }
 
         let ble_advertising = device.get_advertising();
-        ble_advertising.lock().scan_response(false).set_data(
-            BLEAdvertisementData::new()
-                .name(name)
-                .appearance(0x03C1)
-                .add_service_uuid(hid.hid_service().lock().uuid()),
-        )?;
-        ble_advertising.lock().start()?;
+        ble_advertising
+            .lock()
+            .scan_response(false)
+            .set_data(
+                BLEAdvertisementData::new()
+                    .name(name)
+                    .appearance(0x03C1)
+                    .add_service_uuid(hid.hid_service().lock().uuid()),
+            )
+            .unwrap();
+        ble_advertising.lock().start().unwrap();
 
-        Ok(Self {
+        Self {
             server,
             input_keyboard,
             output_keyboard,
@@ -153,7 +158,7 @@ impl BleKeyboard {
                 keys: [0; 6],
             },
             key_count: 0,
-        })
+        }
     }
 
     pub fn connected(&self) -> bool {
@@ -189,106 +194,106 @@ impl BleKeyboard {
             );
         }
     }
+}
 
-    pub async fn send_key(
-        &mut self,
-        keys_pressed: &spinMutex<FnvIndexMap<(i8, i8), Debounce, PRESSED_KEYS_INDEXMAP_SIZE>>,
-    ) -> ! {
-        /* initialize layers */
-        let mut layers = Layers::new();
+pub async fn ble_send_keys(
+    keys_pressed: &spinMutex<FnvIndexMap<Key, Debounce, PRESSED_KEYS_INDEXMAP_SIZE>>,
+) -> ! {
+    /* construct ble */
+    let mut ble_keyboard = BleKeyboard::new();
 
-        if KEYBOARD_LEFT_SIDE {
-            /* For left side of the keyboard */
-            layers.initialize_base_layer_left();
-            layers.initialize_upper_layer_left();
-        } else {
-            /* For right side of the keyboard */
-            layers.initialize_base_layer_right();
-            layers.initialize_upper_layer_right();
-        }
+    /* initialize layers */
+    let mut layers = Layers::new();
 
-        /* initialize set_ble_power_flag */
-        let mut set_ble_power_flag = true;
+    if KEYBOARD_LEFT_SIDE {
+        /* For left side of the keyboard */
+        layers.initialize_base_layer_left();
+        layers.initialize_upper_layer_left();
+    } else {
+        /* For right side of the keyboard */
+        layers.initialize_base_layer_right();
+        layers.initialize_upper_layer_right();
+    }
 
-        /* Run the main loop */
-        loop {
-            if self.connected() {
-                /* set ble power save */
-                if set_ble_power_flag {
-                    /* set power save */
-                    self.set_ble_power_save();
+    /* initialize set_ble_power_flag */
+    let mut set_ble_power_flag = true;
 
-                    /* set flag to false */
-                    set_ble_power_flag = false;
-                }
+    /* Run the main loop */
+    loop {
+        if ble_keyboard.connected() {
+            /* set ble power save */
+            if set_ble_power_flag {
+                /* set power save */
+                ble_keyboard.set_ble_power_save();
 
-                /* try to lock the hashmap */
-                match keys_pressed.try_lock() {
-                    Some(mut keys_pressed_locked) => {
-                        /* store the keys that need to be removed */
-                        let mut pressed_keys_to_remove = Vec::new();
+                /* set flag to false */
+                set_ble_power_flag = false;
+            }
 
-                        /* check if there are pressed keys */
-                        if !keys_pressed_locked.is_empty() {
-                            /* iter trough the pressed keys */
-                            for ((row, col), debounce) in keys_pressed_locked.iter_mut() {
-                                /* check if the key is calculated for debounce */
-                                if debounce.key_debounced {
-                                    /* check and set the layer */
-                                    layers.set_layer(row, col);
+            /* try to lock the hashmap */
+            if let Some(mut keys_pressed) = keys_pressed.try_lock() {
+                /* store the keys that need to be removed */
+                let mut pressed_keys_to_remove = Vec::new();
 
-                                    /* get the pressed key */
-                                    if let Some(valid_key) = layers.get(row, col) {
-                                        /* check and set the modifier */
-                                        layers.set_modifier(
-                                            valid_key,
-                                            &mut self.key_report.modifiers,
-                                        );
+                /* check if there are pressed keys */
+                if !keys_pressed.is_empty() {
+                    /* iter trough the pressed keys */
+                    for (key, debounce) in keys_pressed.iter_mut() {
+                        /* check if the key is calculated for debounce */
+                        if debounce.key_debounced {
+                            /* check and set the layer */
+                            layers.set_layer(&key.row, &key.col);
 
-                                        /* check if the key count is less than 6 */
-                                        if self.key_count < 6 {
-                                            /* set the key to the buffer */
-                                            self.key_report.keys[self.key_count] = *valid_key;
+                            /* get the pressed key */
+                            if let Some(valid_key) = layers.get(&key.row, &key.col) {
+                                /* check and set the modifier */
+                                layers.set_modifier(
+                                    valid_key,
+                                    &mut ble_keyboard.key_report.modifiers,
+                                );
 
-                                            /* increment the key count */
-                                            self.key_count += 1;
+                                /* check if the key count is less than 6 */
+                                if ble_keyboard.key_count < 6 {
+                                    /* set the key to the buffer */
+                                    ble_keyboard.key_report.keys[ble_keyboard.key_count] =
+                                        *valid_key;
 
-                                            /* store the keys which have been stored for sending */
-                                            pressed_keys_to_remove.push((*row, *col));
-                                        } else {
-                                            break;
-                                        }
-                                    }
+                                    /* increment the key count */
+                                    ble_keyboard.key_count += 1;
+
+                                    /* store the keys which have been stored for sending */
+                                    pressed_keys_to_remove.push(*key);
+                                } else {
+                                    break;
                                 }
                             }
-
-                            /* remove pressed keys */
-                            for key_pressed in pressed_keys_to_remove.iter() {
-                                keys_pressed_locked.remove(key_pressed).unwrap();
-                            }
-                        }
-
-                        if self.key_count > 0 {
-                            /* send the report */
-                            self.send_report();
-
-                            /* release the keys */
-                            self.release();
                         }
                     }
-                    None => {}
+
+                    /* remove pressed keys */
+                    for key in pressed_keys_to_remove.iter() {
+                        keys_pressed.remove(key).unwrap();
+                    }
                 }
 
-                delay_us(10).await;
-            } else {
-                log::info!("Keyboard not connected!");
+                if ble_keyboard.key_count > 0 {
+                    /* send the report */
+                    ble_keyboard.send_report();
 
-                /* reset ble power save flag*/
-                set_ble_power_flag = true;
-
-                /* sleep for 100ms */
-                delay_ms(100).await;
+                    /* release the keys */
+                    ble_keyboard.release();
+                }
             }
+
+            delay_us(10).await;
+        } else {
+            log::info!("Keyboard not connected!");
+
+            /* reset ble power save flag*/
+            set_ble_power_flag = true;
+
+            /* sleep for 100ms */
+            delay_ms(100).await;
         }
     }
 }

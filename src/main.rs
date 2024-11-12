@@ -11,10 +11,10 @@ use esp_idf_hal::task::block_on;
 use heapless::FnvIndexMap;
 use spin::Mutex;
 
-use crate::ble::BleKeyboard;
+use crate::ble::ble_send_keys;
 use crate::config::config::*;
 use crate::debounce::*;
-use crate::matrix::PinMatrix;
+use crate::matrix::{scan_grid, Key};
 
 fn main() -> anyhow::Result<()> {
     esp_idf_svc::sys::link_patches();
@@ -22,26 +22,15 @@ fn main() -> anyhow::Result<()> {
     // Bind the log crate to the ESP Logging facilities
     esp_idf_svc::log::EspLogger::initialize_default();
 
-    /* initialize BLE */
-    let mut ble_keyboard = BleKeyboard::new().unwrap();
-    log::info!("BLE Keyboard Initialized...");
-
-    /* initialize matrix */
-    let mut pin_matrix = PinMatrix::new();
-    log::info!("Pin Matrix Initialized...");
-
     /* initialize keys pressed hashmap */
-    let keys_pressed: Mutex<FnvIndexMap<(i8, i8), Debounce, PRESSED_KEYS_INDEXMAP_SIZE>> =
+    let keys_pressed: Mutex<FnvIndexMap<Key, Debounce, PRESSED_KEYS_INDEXMAP_SIZE>> =
         Mutex::new(FnvIndexMap::new());
 
     /* run the tasks concurrently */
     block_on(async {
         select(
-            ble_keyboard.send_key(&keys_pressed),
-            join(
-                pin_matrix.scan_grid(&keys_pressed),
-                calculate_debounce(&keys_pressed),
-            ),
+            ble_send_keys(&keys_pressed),
+            join(scan_grid(&keys_pressed), calculate_debounce(&keys_pressed)),
         )
         .await;
     });
