@@ -1,5 +1,6 @@
 use crate::{
     config::config::{DEBOUNCE_DELAY, PRESSED_KEYS_INDEXMAP_SIZE},
+    delay::delay_us,
     matrix::Key,
 };
 use embassy_time::Instant;
@@ -10,6 +11,7 @@ use spin::Mutex;
 pub struct Debounce {
     pub key_pressed_time: Instant,
     pub key_debounced: bool,
+    pub key_reported: bool,
 }
 
 pub async fn calculate_debounce(
@@ -21,10 +23,13 @@ pub async fn calculate_debounce(
             /* itter throught the pressed keys */
             for (_key, debounce) in keys_pressed.iter_mut() {
                 /* check if the key has passed the debounce delay */
-                if Instant::now() >= debounce.key_pressed_time + DEBOUNCE_DELAY {
+                if debounce.key_reported
+                    && Instant::now() >= debounce.key_pressed_time + DEBOUNCE_DELAY
+                {
                     debounce.key_debounced = true;
                 }
             }
         }
+        delay_us(10).await;
     }
 }

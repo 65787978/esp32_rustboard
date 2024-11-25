@@ -69,7 +69,7 @@ impl PinMatrix<'_> {
         self.set_enable_interrupts();
 
         /* set the home row to high */
-        self.rows[0].set_high().unwrap();
+        self.rows[1].set_high().unwrap();
 
         /* enter sleep mode */
         unsafe {
@@ -163,11 +163,12 @@ pub async fn scan_grid(
                                         Debounce {
                                             key_pressed_time: Instant::now(),
                                             key_debounced: false,
+                                            key_reported: false,
                                         },
                                     )
                                     .unwrap();
 
-                                log::info!("Pressed keys stored!");
+                                log::info!("Pressed keys stored! X:{}, Y:{}", row_count, col_count);
                             }
                         }
                         /* reset sleep delay if a key is pressed */

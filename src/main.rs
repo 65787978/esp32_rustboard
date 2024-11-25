@@ -4,8 +4,7 @@ to flash: espflash flash ./target/riscv32imc-esp-espidf/release/esp32_rustboard 
 */
 
 use anyhow;
-use embassy_futures::join::join;
-use embassy_futures::select::select;
+use embassy_futures::select::select3;
 use esp32_rustboard::*;
 use esp_idf_hal::task::block_on;
 use heapless::FnvIndexMap;
@@ -28,9 +27,10 @@ fn main() -> anyhow::Result<()> {
 
     /* run the tasks concurrently */
     block_on(async {
-        select(
+        select3(
             ble_send_keys(&keys_pressed),
-            join(scan_grid(&keys_pressed), calculate_debounce(&keys_pressed)),
+            scan_grid(&keys_pressed),
+            calculate_debounce(&keys_pressed),
         )
         .await;
     });

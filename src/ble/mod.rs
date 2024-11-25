@@ -239,8 +239,7 @@ pub async fn ble_send_keys(
                 if !keys_pressed.is_empty() {
                     /* iter trough the pressed keys */
                     for (key, debounce) in keys_pressed.iter_mut() {
-                        /* check if the key is calculated for debounce */
-                        if debounce.key_debounced {
+                        if !debounce.key_reported {
                             /* check and set the layer */
                             layers.set_layer(&key.row, &key.col);
 
@@ -261,16 +260,21 @@ pub async fn ble_send_keys(
                                     /* increment the key count */
                                     ble_keyboard.key_count += 1;
 
-                                    /* store the keys which have been stored for sending */
-                                    pressed_keys_to_remove.push(*key);
+                                    /* set the key as reported */
+                                    debounce.key_reported = true;
                                 } else {
                                     break;
                                 }
                             }
                         }
+                        /* check if the key is calculated for debounce */
+                        else if debounce.key_debounced {
+                            /* if key has been debounced, add it to be removed */
+                            pressed_keys_to_remove.push(*key);
+                        }
                     }
 
-                    /* remove pressed keys */
+                    /* if key has been debounced, add it to be removed */
                     for key in pressed_keys_to_remove.iter() {
                         keys_pressed.remove(key).unwrap();
                     }
