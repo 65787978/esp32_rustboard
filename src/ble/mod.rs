@@ -257,6 +257,8 @@ pub async fn ble_send_keys(
                                     ble_keyboard.key_report.keys[ble_keyboard.key_count] =
                                         *valid_key;
 
+                                    log::info!("KEY: {}", *valid_key);
+                                    
                                     /* increment the key count */
                                     ble_keyboard.key_count += 1;
 

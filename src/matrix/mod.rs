@@ -4,8 +4,8 @@ use embassy_time::Instant;
 use esp_idf_svc::hal::gpio::*;
 use esp_idf_svc::hal::peripherals::Peripherals;
 use esp_idf_sys::{
-    self as _, gpio_int_type_t_GPIO_INTR_HIGH_LEVEL, gpio_num_t_GPIO_NUM_10, gpio_num_t_GPIO_NUM_2,
-    gpio_num_t_GPIO_NUM_3, gpio_num_t_GPIO_NUM_4, gpio_num_t_GPIO_NUM_6, gpio_num_t_GPIO_NUM_7,
+    self as _, gpio_int_type_t_GPIO_INTR_HIGH_LEVEL, gpio_num_t_GPIO_NUM_10,
+    gpio_num_t_GPIO_NUM_20, gpio_num_t_GPIO_NUM_6, gpio_num_t_GPIO_NUM_7,
 };
 use heapless::FnvIndexMap;
 use spin::Mutex;
@@ -31,16 +31,16 @@ impl PinMatrix<'_> {
             rows: [
                 PinDriver::output(peripherals.pins.gpio0.downgrade_output()).unwrap(),
                 PinDriver::output(peripherals.pins.gpio1.downgrade_output()).unwrap(),
-                PinDriver::output(peripherals.pins.gpio12.downgrade_output()).unwrap(),
-                PinDriver::output(peripherals.pins.gpio18.downgrade_output()).unwrap(),
+                PinDriver::output(peripherals.pins.gpio2.downgrade_output()).unwrap(),
+                PinDriver::output(peripherals.pins.gpio3.downgrade_output()).unwrap(),
             ],
             cols: [
-                PinDriver::input(peripherals.pins.gpio2.downgrade()).unwrap(),
-                PinDriver::input(peripherals.pins.gpio3.downgrade()).unwrap(),
+                PinDriver::input(peripherals.pins.gpio21.downgrade()).unwrap(),
+                PinDriver::input(peripherals.pins.gpio20.downgrade()).unwrap(),
                 PinDriver::input(peripherals.pins.gpio10.downgrade()).unwrap(),
-                PinDriver::input(peripherals.pins.gpio6.downgrade()).unwrap(),
                 PinDriver::input(peripherals.pins.gpio7.downgrade()).unwrap(),
-                PinDriver::input(peripherals.pins.gpio4.downgrade()).unwrap(),
+                PinDriver::input(peripherals.pins.gpio6.downgrade()).unwrap(),
+                PinDriver::input(peripherals.pins.gpio5.downgrade()).unwrap(),
             ],
             enter_sleep_delay: Instant::now() + SLEEP_DELAY_INIT,
             sleep_delay_key_pressed: false,
@@ -75,12 +75,7 @@ impl PinMatrix<'_> {
         unsafe {
             /* set gpios that can wake up the chip */
             esp_idf_sys::gpio_wakeup_enable(
-                gpio_num_t_GPIO_NUM_2,
-                gpio_int_type_t_GPIO_INTR_HIGH_LEVEL,
-            );
-
-            esp_idf_sys::gpio_wakeup_enable(
-                gpio_num_t_GPIO_NUM_3,
+                gpio_num_t_GPIO_NUM_20,
                 gpio_int_type_t_GPIO_INTR_HIGH_LEVEL,
             );
             esp_idf_sys::gpio_wakeup_enable(
@@ -88,15 +83,11 @@ impl PinMatrix<'_> {
                 gpio_int_type_t_GPIO_INTR_HIGH_LEVEL,
             );
             esp_idf_sys::gpio_wakeup_enable(
-                gpio_num_t_GPIO_NUM_6,
-                gpio_int_type_t_GPIO_INTR_HIGH_LEVEL,
-            );
-            esp_idf_sys::gpio_wakeup_enable(
                 gpio_num_t_GPIO_NUM_7,
                 gpio_int_type_t_GPIO_INTR_HIGH_LEVEL,
             );
             esp_idf_sys::gpio_wakeup_enable(
-                gpio_num_t_GPIO_NUM_4,
+                gpio_num_t_GPIO_NUM_6,
                 gpio_int_type_t_GPIO_INTR_HIGH_LEVEL,
             );
 
