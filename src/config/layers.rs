@@ -6,7 +6,7 @@ X \ Y|  0  |  1  |  2  |  3  |  4  |  5  |           X \ Y|  0  |  1  |  2  |  3
    0 |_ESC_|__'__|__,__|__.__|__p__|__y__|              0 |__f__|__g__|__c__|__r__|__l__|__/__|
    1 |_BSP_|__a__|__o__|__e__|__u__|__i__|              1 |__d__|__h__|__t__|__n__|__s__|__-__|
    2 |_CTL_|__;__|__q__|__j__|__k__|__x__|              2 |__b__|__m__|__w__|__v__|__z__|__=__|
-   3                   |_LYR_|_SFT_|_SPC_|              3 |_ENT_|_ALT_|_LYR_|
+   3                   |_LYR_|_SPC_|_SFT_|              3 |_ALT_|_ENT_|_LYR_|
 
 *********************************************************************************************
 UPPER LAYER:
@@ -15,7 +15,7 @@ X \ Y|  0  |  1  |  2  |  3  |  4  |  5  |           X \ Y|  0  |  1  |  2  |  3
    0 |_ESC_|__1__|__2__|__3__|__4__|__5__|              0 |__6__|__7__|__8__|__9__|__0__|_____|
    1 |_BSP_|_____|_____|_____|copy_|paste|              1 |_____|_left|_down|__up_|_rght|_____|
    2 |_CTL_|_____|_____|_____|_____|prtsc|              2 |__\__|__[__|__]__|_____|_____|_____|
-   3                   |_LYR_|_SFT_|_SPC_|              3 |_ENT_|_ALT_|_LYR_|
+   3                   |_LYR_|_SPC_|_SFT_|              3 |_ALT_|_ENT_|_LYR_|
 
 *********************************************************************************************
 */
@@ -76,8 +76,8 @@ impl Layers {
         self.base.insert((3, 1), HidKeys::None as u8).unwrap(); //
         self.base.insert((3, 2), HidKeys::None as u8).unwrap(); //
         self.base.insert((3, 3), HidKeys::None as u8).unwrap(); // Layer
-        self.base.insert((3, 4), HidModifiers::Shift as u8).unwrap(); // SHIFT
-        self.base.insert((3, 5), HidKeys::Space as u8).unwrap(); // SPACE
+        self.base.insert((3, 4), HidKeys::Space as u8).unwrap(); // SPACE
+        self.base.insert((3, 5), HidModifiers::Shift as u8).unwrap(); // SHIFT
     }
 
     pub fn initialize_upper_layer_left(&mut self) {
@@ -109,9 +109,9 @@ impl Layers {
         self.upper.insert((3, 2), HidModifiers::None as u8).unwrap(); // NONE
         self.upper.insert((3, 3), HidKeys::None as u8).unwrap(); // Layer
         self.upper
-            .insert((3, 4), HidModifiers::Shift as u8)
-            .unwrap(); // SHIFT
-        self.upper.insert((3, 5), HidKeys::Space as u8).unwrap(); // SPACE
+            .insert((3, 4), HidKeys::Space as u8)
+            .unwrap(); // SPACE
+        self.upper.insert((3, 5), HidModifiers::Shift  as u8).unwrap(); // SHIFT
     }
 
     pub fn initialize_base_layer_right(&mut self) {
@@ -136,8 +136,8 @@ impl Layers {
         self.base.insert((2, 4), HidKeys::Z as u8).unwrap(); // z
         self.base.insert((2, 5), HidKeys::Equal as u8).unwrap(); // =
 
-        self.base.insert((3, 0), HidKeys::Enter as u8).unwrap(); // ENTER
-        self.base.insert((3, 1), HidModifiers::Alt as u8).unwrap(); // ALT
+        self.base.insert((3, 0), HidModifiers::Alt as u8).unwrap(); // ALT
+        self.base.insert((3, 1), HidKeys::Enter as u8).unwrap(); // ENTER
         self.base.insert((3, 2), HidKeys::None as u8).unwrap(); // LAYER
         self.base.insert((3, 3), HidKeys::None as u8).unwrap(); // NONE
         self.base.insert((3, 4), HidKeys::None as u8).unwrap(); // NONE
@@ -166,8 +166,8 @@ impl Layers {
         self.upper.insert((2, 4), HidKeys::None as u8).unwrap(); // NONE
         self.upper.insert((2, 5), HidKeys::None as u8).unwrap(); // NONE
 
-        self.upper.insert((3, 0), HidKeys::Enter as u8).unwrap(); // ENTER
-        self.upper.insert((3, 1), HidModifiers::Alt as u8).unwrap(); // ALT
+        self.upper.insert((3, 0), HidModifiers::Alt as u8).unwrap(); // ALT
+        self.upper.insert((3, 1), HidKeys::Enter as u8).unwrap(); // ENTER
         self.upper.insert((3, 2), HidKeys::None as u8).unwrap(); // LAYER
         self.upper.insert((3, 3), HidKeys::None as u8).unwrap(); // NONE
         self.upper.insert((3, 4), HidKeys::None as u8).unwrap(); // NONE
