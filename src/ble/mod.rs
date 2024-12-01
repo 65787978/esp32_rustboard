@@ -126,13 +126,14 @@ impl BleKeyboard {
 
         hid.set_battery_level(100);
 
-        let name: &str;
+        
 
-        if KEYBOARD_LEFT_SIDE {
-            name = "RUSTBOARD_LEFT";
-        } else {
-            name = "RUSTBOARD_RIGHT";
-        }
+        #[cfg(feature = "left-side")]
+        let name = "RUSTBOARD_LEFT";
+        
+        #[cfg(feature = "right-side")]
+        let name = "RUSTBOARD_RIGHT";
+        
 
         let ble_advertising = device.get_advertising();
         ble_advertising
@@ -205,11 +206,14 @@ pub async fn ble_send_keys(
     /* initialize layers */
     let mut layers = Layers::new();
 
-    if KEYBOARD_LEFT_SIDE {
-        /* For left side of the keyboard */
+    #[cfg(feature = "left-side")]
+    {/* For left side of the keyboard */
         layers.initialize_base_layer_left();
         layers.initialize_upper_layer_left();
-    } else {
+    }
+
+    #[cfg(feature = "right-side")]
+    {
         /* For right side of the keyboard */
         layers.initialize_base_layer_right();
         layers.initialize_upper_layer_right();

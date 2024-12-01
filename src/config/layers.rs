@@ -40,9 +40,13 @@ impl Layers {
             upper: FnvIndexMap::new(),
             state: Layer::Base,
             layer_key: {
-                if KEYBOARD_LEFT_SIDE {
+                #[cfg(feature = "left-side")]
+                {
                     LAYER_KEY_LEFT_SIDE
-                } else {
+                }
+
+                #[cfg(feature = "right-side")]
+                {
                     LAYER_KEY_RIGHT_SIDE
                 }
             },
@@ -108,10 +112,10 @@ impl Layers {
         self.upper.insert((3, 1), HidModifiers::None as u8).unwrap(); // NONE
         self.upper.insert((3, 2), HidModifiers::None as u8).unwrap(); // NONE
         self.upper.insert((3, 3), HidKeys::None as u8).unwrap(); // Layer
+        self.upper.insert((3, 4), HidKeys::Space as u8).unwrap(); // SPACE
         self.upper
-            .insert((3, 4), HidKeys::Space as u8)
-            .unwrap(); // SPACE
-        self.upper.insert((3, 5), HidModifiers::Shift  as u8).unwrap(); // SHIFT
+            .insert((3, 5), HidModifiers::Shift as u8)
+            .unwrap(); // SHIFT
     }
 
     pub fn initialize_base_layer_right(&mut self) {

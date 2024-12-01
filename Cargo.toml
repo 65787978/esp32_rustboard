@@ -19,6 +19,8 @@ opt-level = "z"
 
 [features]
 default = ["embassy", "esp-idf-svc/native"]
+left-side = []
+right-side = []
 
 pio = ["esp-idf-svc/pio"]
 alloc = ["esp-idf-svc/alloc"]
