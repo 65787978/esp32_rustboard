@@ -25,22 +25,32 @@ pub struct PinMatrix<'a> {
 
 impl PinMatrix<'_> {
     pub fn new() -> PinMatrix<'static> {
-        let peripherals = Peripherals::take().unwrap();
+        let peripherals = Peripherals::take().expect("Not able to init peripherals.");
 
         PinMatrix {
             rows: [
-                PinDriver::output(peripherals.pins.gpio0.downgrade_output()).unwrap(),
-                PinDriver::output(peripherals.pins.gpio1.downgrade_output()).unwrap(),
-                PinDriver::output(peripherals.pins.gpio2.downgrade_output()).unwrap(),
-                PinDriver::output(peripherals.pins.gpio3.downgrade_output()).unwrap(),
+                PinDriver::output(peripherals.pins.gpio0.downgrade_output())
+                    .expect("Not able to set port as output."),
+                PinDriver::output(peripherals.pins.gpio1.downgrade_output())
+                    .expect("Not able to set port as output."),
+                PinDriver::output(peripherals.pins.gpio2.downgrade_output())
+                    .expect("Not able to set port as output."),
+                PinDriver::output(peripherals.pins.gpio3.downgrade_output())
+                    .expect("Not able to set port as output."),
             ],
             cols: [
-                PinDriver::input(peripherals.pins.gpio21.downgrade()).unwrap(),
-                PinDriver::input(peripherals.pins.gpio20.downgrade()).unwrap(),
-                PinDriver::input(peripherals.pins.gpio10.downgrade()).unwrap(),
-                PinDriver::input(peripherals.pins.gpio7.downgrade()).unwrap(),
-                PinDriver::input(peripherals.pins.gpio6.downgrade()).unwrap(),
-                PinDriver::input(peripherals.pins.gpio5.downgrade()).unwrap(),
+                PinDriver::input(peripherals.pins.gpio21.downgrade())
+                    .expect("Not able to set port as input."),
+                PinDriver::input(peripherals.pins.gpio20.downgrade())
+                    .expect("Not able to set port as input."),
+                PinDriver::input(peripherals.pins.gpio10.downgrade())
+                    .expect("Not able to set port as input."),
+                PinDriver::input(peripherals.pins.gpio7.downgrade())
+                    .expect("Not able to set port as input."),
+                PinDriver::input(peripherals.pins.gpio6.downgrade())
+                    .expect("Not able to set port as input."),
+                PinDriver::input(peripherals.pins.gpio5.downgrade())
+                    .expect("Not able to set port as input."),
             ],
             enter_sleep_delay: Instant::now() + SLEEP_DELAY_INIT,
             sleep_delay_key_pressed: false,
@@ -50,13 +60,15 @@ impl PinMatrix<'_> {
     fn set_cols_interrupt(&mut self) {
         for col in self.cols.iter_mut() {
             col.set_pull(Pull::Down).unwrap();
-            col.set_interrupt_type(InterruptType::HighLevel).unwrap();
+            col.set_interrupt_type(InterruptType::AnyEdge)
+                .expect("Not able to set interrupt type.");
         }
     }
 
     fn set_enable_interrupts(&mut self) {
         for col in self.cols.iter_mut() {
-            col.enable_interrupt().unwrap();
+            col.enable_interrupt()
+                .expect("Not able to enable interrput.")
         }
     }
 
@@ -121,6 +133,8 @@ pub async fn scan_grid(
     let mut row_count: i8 = 0;
     let mut col_count: i8 = 0;
 
+    let mut last_pressed_key: Key = Key { row: 0, col: 0 };
+
     loop {
         if Instant::now() >= matrix.enter_sleep_delay {
             matrix.enter_sleep_mode();
@@ -137,31 +151,41 @@ pub async fn scan_grid(
                 for col in matrix.cols.iter() {
                     /* if a col is high */
                     if col.is_high() {
-                        /* lock the hashmap */
-                        if let Some(mut keys_pressed) = keys_pressed.try_lock() {
-                            /* check if the key has been pressed already*/
-                            if !keys_pressed.contains_key(&Key {
-                                row: row_count,
-                                col: col_count,
-                            }) {
-                                /* store pressed keys */
-                                keys_pressed
-                                    .insert(
-                                        Key {
-                                            row: row_count,
-                                            col: col_count,
-                                        },
-                                        Debounce {
-                                            key_pressed_time: Instant::now(),
-                                            key_debounced: false,
-                                            key_reported: false,
-                                        },
-                                    )
-                                    .unwrap();
+                        if (Key {
+                            row: row_count,
+                            col: col_count,
+                        }) != last_pressed_key
+                        {
+                            /* lock the hashmap */
+                            if let Some(mut keys_pressed) = keys_pressed.try_lock() {
+                                /* check if the last pressed key is the same as the currently pressed key */
+                                if let Some((key_last, value_last)) = keys_pressed.last() {
+                                    value_last.key_rising_edge = true;
+                                    /* store pressed keys */
+                                    keys_pressed
+                                        .insert(
+                                            Key {
+                                                row: row_count,
+                                                col: col_count,
+                                            },
+                                            Debounce {
+                                                key_pressed_time: Instant::now(),
+                                                key_ready_for_removal: false,
+                                                key_falling_edge: true,
+                                                key_rising_edge: false,
+                                            },
+                                        )
+                                        .expect("Failed to store key in the hashmap!");
 
-                                log::info!("Pressed keys stored! X:{}, Y:{}", row_count, col_count);
+                                    log::info!(
+                                        "Pressed keys stored! X:{}, Y:{}",
+                                        row_count,
+                                        col_count
+                                    );
+                                }
                             }
                         }
+
                         /* reset sleep delay if a key is pressed */
                         matrix.sleep_delay_key_pressed = true;
                     }
