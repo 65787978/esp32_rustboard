@@ -10,8 +10,9 @@ use spin::Mutex;
 #[derive(Debug)]
 pub struct Debounce {
     pub key_pressed_time: Instant,
-    pub key_debounced: bool,
-    pub key_reported: bool,
+    pub key_ready_for_removal: bool,
+    pub key_falling_edge: bool,
+    pub key_rising_edge: bool,
 }
 
 pub async fn calculate_debounce(
@@ -23,10 +24,8 @@ pub async fn calculate_debounce(
             /* itter throught the pressed keys */
             for (_key, debounce) in keys_pressed.iter_mut() {
                 /* check if the key has passed the debounce delay */
-                if debounce.key_reported
-                    && Instant::now() >= debounce.key_pressed_time + DEBOUNCE_DELAY
-                {
-                    debounce.key_debounced = true;
+                if debounce.key_rising_edge {
+                    debounce.key_ready_for_removal = true;
                 }
             }
         }
