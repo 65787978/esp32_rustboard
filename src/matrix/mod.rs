@@ -1,3 +1,4 @@
+use crate::debounce::{KEY_PRESSED, KEY_RELEASED};
 use crate::delay::*;
 use crate::{config::config::*, debounce::Debounce};
 use embassy_time::Instant;
@@ -133,6 +134,7 @@ pub async fn scan_grid(
     let mut row_count: i8 = 0;
     let mut col_count: i8 = 0;
 
+    /* initialize last_pressed_key shared info */
     let mut last_pressed_key: Key = Key { row: 0, col: 0 };
 
     loop {
@@ -151,6 +153,7 @@ pub async fn scan_grid(
                 for col in matrix.cols.iter() {
                     /* if a col is high */
                     if col.is_high() {
+                        /* check if the last_pressed_key is the same as the current */
                         if (Key {
                             row: row_count,
                             col: col_count,
@@ -159,8 +162,8 @@ pub async fn scan_grid(
                             /* lock the hashmap */
                             if let Some(mut keys_pressed) = keys_pressed.try_lock() {
                                 /* check if the last pressed key is the same as the currently pressed key */
-                                if let Some((key_last, value_last)) = keys_pressed.last() {
-                                    value_last.key_rising_edge = true;
+                                if let Some((_key_last, value_last)) = keys_pressed.last_mut() {
+                                    value_last.key_state = KEY_RELEASED;
                                     /* store pressed keys */
                                     keys_pressed
                                         .insert(
@@ -170,9 +173,7 @@ pub async fn scan_grid(
                                             },
                                             Debounce {
                                                 key_pressed_time: Instant::now(),
-                                                key_ready_for_removal: false,
-                                                key_falling_edge: true,
-                                                key_rising_edge: false,
+                                                key_state: KEY_PRESSED,
                                             },
                                         )
                                         .expect("Failed to store key in the hashmap!");
@@ -182,6 +183,12 @@ pub async fn scan_grid(
                                         row_count,
                                         col_count
                                     );
+
+                                    /* store the current key as the last pressed key */
+                                    last_pressed_key = Key {
+                                        row: row_count,
+                                        col: col_count,
+                                    };
                                 }
                             }
                         }
