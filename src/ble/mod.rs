@@ -3,7 +3,7 @@
 extern crate alloc;
 
 use crate::config::{config::*, layers::*};
-use crate::debounce::Debounce;
+use crate::debounce::{Debounce, KEY_PRESSED, KEY_READY_FOR_REMOVAL};
 use crate::delay::*;
 use crate::matrix::Key;
 
@@ -56,34 +56,34 @@ const HID_REPORT_DISCRIPTOR: &[u8] = hid!(
     (USAGE_MAXIMUM, 0x65), //   USAGE_MAXIMUM (0x65)
     (HIDINPUT, 0x00),  //   INPUT (Data,Array,Abs,No Wrap,Linear,Preferred State,No Null Position)
     (END_COLLECTION),  // END_COLLECTION
-    // // ------------------------------------------------- Media Keys
-    // (USAGE_PAGE, 0x0C),         // USAGE_PAGE (Consumer)
-    // (USAGE, 0x01),              // USAGE (Consumer Control)
-    // (COLLECTION, 0x01),         // COLLECTION (Application)
-    // (REPORT_ID, MEDIA_KEYS_ID), //   REPORT_ID (3)
-    // (USAGE_PAGE, 0x0C),         //   USAGE_PAGE (Consumer)
-    // (LOGICAL_MINIMUM, 0x00),    //   LOGICAL_MINIMUM (0)
-    // (LOGICAL_MAXIMUM, 0x01),    //   LOGICAL_MAXIMUM (1)
-    // (REPORT_SIZE, 0x01),        //   REPORT_SIZE (1)
-    // (REPORT_COUNT, 0x10),       //   REPORT_COUNT (16)
-    // (USAGE, 0xB5),              //   USAGE (Scan Next Track)     ; bit 0: 1
-    // (USAGE, 0xB6),              //   USAGE (Scan Previous Track) ; bit 1: 2
-    // (USAGE, 0xB7),              //   USAGE (Stop)                ; bit 2: 4
-    // (USAGE, 0xCD),              //   USAGE (Play/Pause)          ; bit 3: 8
-    // (USAGE, 0xE2),              //   USAGE (Mute)                ; bit 4: 16
-    // (USAGE, 0xE9),              //   USAGE (Volume Increment)    ; bit 5: 32
-    // (USAGE, 0xEA),              //   USAGE (Volume Decrement)    ; bit 6: 64
-    // (USAGE, 0x23, 0x02),        //   Usage (WWW Home)            ; bit 7: 128
-    // (USAGE, 0x94, 0x01),        //   Usage (My Computer) ; bit 0: 1
-    // (USAGE, 0x92, 0x01),        //   Usage (Calculator)  ; bit 1: 2
-    // (USAGE, 0x2A, 0x02),        //   Usage (WWW fav)     ; bit 2: 4
-    // (USAGE, 0x21, 0x02),        //   Usage (WWW search)  ; bit 3: 8
-    // (USAGE, 0x26, 0x02),        //   Usage (WWW stop)    ; bit 4: 16
-    // (USAGE, 0x24, 0x02),        //   Usage (WWW back)    ; bit 5: 32
-    // (USAGE, 0x83, 0x01),        //   Usage (Media sel)   ; bit 6: 64
-    // (USAGE, 0x8A, 0x01),        //   Usage (Mail)        ; bit 7: 128
-    // (HIDINPUT, 0x02), // INPUT (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
-    // (END_COLLECTION), // END_COLLECTION
+                       // // ------------------------------------------------- Media Keys
+                       // (USAGE_PAGE, 0x0C),         // USAGE_PAGE (Consumer)
+                       // (USAGE, 0x01),              // USAGE (Consumer Control)
+                       // (COLLECTION, 0x01),         // COLLECTION (Application)
+                       // (REPORT_ID, MEDIA_KEYS_ID), //   REPORT_ID (3)
+                       // (USAGE_PAGE, 0x0C),         //   USAGE_PAGE (Consumer)
+                       // (LOGICAL_MINIMUM, 0x00),    //   LOGICAL_MINIMUM (0)
+                       // (LOGICAL_MAXIMUM, 0x01),    //   LOGICAL_MAXIMUM (1)
+                       // (REPORT_SIZE, 0x01),        //   REPORT_SIZE (1)
+                       // (REPORT_COUNT, 0x10),       //   REPORT_COUNT (16)
+                       // (USAGE, 0xB5),              //   USAGE (Scan Next Track)     ; bit 0: 1
+                       // (USAGE, 0xB6),              //   USAGE (Scan Previous Track) ; bit 1: 2
+                       // (USAGE, 0xB7),              //   USAGE (Stop)                ; bit 2: 4
+                       // (USAGE, 0xCD),              //   USAGE (Play/Pause)          ; bit 3: 8
+                       // (USAGE, 0xE2),              //   USAGE (Mute)                ; bit 4: 16
+                       // (USAGE, 0xE9),              //   USAGE (Volume Increment)    ; bit 5: 32
+                       // (USAGE, 0xEA),              //   USAGE (Volume Decrement)    ; bit 6: 64
+                       // (USAGE, 0x23, 0x02),        //   Usage (WWW Home)            ; bit 7: 128
+                       // (USAGE, 0x94, 0x01),        //   Usage (My Computer) ; bit 0: 1
+                       // (USAGE, 0x92, 0x01),        //   Usage (Calculator)  ; bit 1: 2
+                       // (USAGE, 0x2A, 0x02),        //   Usage (WWW fav)     ; bit 2: 4
+                       // (USAGE, 0x21, 0x02),        //   Usage (WWW search)  ; bit 3: 8
+                       // (USAGE, 0x26, 0x02),        //   Usage (WWW stop)    ; bit 4: 16
+                       // (USAGE, 0x24, 0x02),        //   Usage (WWW back)    ; bit 5: 32
+                       // (USAGE, 0x83, 0x01),        //   Usage (Media sel)   ; bit 6: 64
+                       // (USAGE, 0x8A, 0x01),        //   Usage (Mail)        ; bit 7: 128
+                       // (HIDINPUT, 0x02), // INPUT (Data,Var,Abs,No Wrap,Linear,Preferred State,No Null Position)
+                       // (END_COLLECTION), // END_COLLECTION
 );
 
 #[repr(packed)]
@@ -126,14 +126,11 @@ impl BleKeyboard {
 
         hid.set_battery_level(100);
 
-        
-
         #[cfg(feature = "left-side")]
         let name = "RUSTBOARD_LEFT";
-        
+
         #[cfg(feature = "right-side")]
         let name = "RUSTBOARD_RIGHT";
-        
 
         let ble_advertising = device.get_advertising();
         ble_advertising
@@ -207,7 +204,8 @@ pub async fn ble_send_keys(
     let mut layers = Layers::new();
 
     #[cfg(feature = "left-side")]
-    {/* For left side of the keyboard */
+    {
+        /* For left side of the keyboard */
         layers.initialize_base_layer_left();
         layers.initialize_upper_layer_left();
     }
@@ -243,40 +241,67 @@ pub async fn ble_send_keys(
                 if !keys_pressed.is_empty() {
                     /* iter trough the pressed keys */
                     for (key, debounce) in keys_pressed.iter_mut() {
-                        if !debounce.key_reported {
-                            /* check and set the layer */
-                            layers.set_layer(&key.row, &key.col);
+                        /*check the key debounce state */
+                        match debounce.key_state {
+                            KEY_PRESSED => {
+                                /* check and set the layer */
+                                layers.set_layer(&key.row, &key.col);
 
-                            /* get the pressed key */
-                            if let Some(valid_key) = layers.get(&key.row, &key.col) {
-                                /* check and set the modifier */
-                                layers.set_modifier(
-                                    valid_key,
-                                    &mut ble_keyboard.key_report.modifiers,
-                                );
+                                /* get the pressed key */
+                                if let Some(valid_key) = layers.get(&key.row, &key.col) {
+                                    /* check and set the modifier */
+                                    layers.set_modifier(
+                                        valid_key,
+                                        &mut ble_keyboard.key_report.modifiers,
+                                    );
 
-                                /* check if the key count is less than 6 */
-                                if ble_keyboard.key_count < 6 {
-                                    /* set the key to the buffer */
-                                    ble_keyboard.key_report.keys[ble_keyboard.key_count] =
-                                        *valid_key;
+                                    /* check if the key count is less than 6 */
+                                    if ble_keyboard.key_count < 6 {
+                                        /* set the key to the buffer */
+                                        ble_keyboard.key_report.keys[ble_keyboard.key_count] =
+                                            *valid_key;
 
-                                    log::info!("KEY: {}", *valid_key);
-                                    
-                                    /* increment the key count */
-                                    ble_keyboard.key_count += 1;
+                                        log::info!("KEY: {}", *valid_key);
 
-                                    /* set the key as reported */
-                                    debounce.key_reported = true;
-                                } else {
-                                    break;
+                                        /* increment the key count */
+                                        ble_keyboard.key_count += 1;
+
+                                        /* send the report with the new key */
+                                        ble_keyboard.send_report();
+                                    } else {
+                                        break;
+                                    }
                                 }
                             }
-                        }
-                        /* check if the key is calculated for debounce */
-                        else if debounce.key_debounced {
-                            /* if key has been debounced, add it to be removed */
-                            pressed_keys_to_remove.push(*key);
+
+                            /* check if the key is calculated for debounce */
+                            KEY_READY_FOR_REMOVAL => {
+                                /* get the mapped key from the hashmap */
+                                if let Some(valid_key) = layers.get(&key.row, &key.col) {
+                                    /*check if the key is contained in the report */
+                                    if ble_keyboard.key_report.keys.contains(valid_key) {
+                                        /* go over the keys in the report */
+                                        for key_in_report in ble_keyboard.key_report.keys.iter_mut()
+                                        {
+                                            if *key_in_report == *valid_key {
+                                                /* remove the key from the report */
+                                                *key_in_report = 0;
+
+                                                /*decrement the count as the key is removed from the report */
+                                                ble_keyboard.key_count -= 1;
+                                            }
+                                        }
+
+                                        /* send the new report without the key */
+                                        ble_keyboard.send_report();
+                                    }
+                                }
+
+                                /* if key has been debounced, add it to be removed */
+                                pressed_keys_to_remove.push(*key);
+                            }
+
+                            _ => { /* do nothing */ }
                         }
                     }
 
@@ -286,24 +311,16 @@ pub async fn ble_send_keys(
                     }
                 }
 
-                if ble_keyboard.key_count > 0 {
-                    /* send the report */
-                    ble_keyboard.send_report();
+                delay_us(10).await;
+            } else {
+                log::info!("Keyboard not connected!");
 
-                    /* release the keys */
-                    ble_keyboard.release();
-                }
+                /* reset ble power save flag*/
+                set_ble_power_flag = true;
+
+                /* sleep for 100ms */
+                delay_ms(100).await;
             }
-
-            delay_us(10).await;
-        } else {
-            log::info!("Keyboard not connected!");
-
-            /* reset ble power save flag*/
-            set_ble_power_flag = true;
-
-            /* sleep for 100ms */
-            delay_ms(100).await;
         }
     }
 }
