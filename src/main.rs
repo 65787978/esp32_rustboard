@@ -5,11 +5,10 @@ to flash: espflash flash ./target/riscv32imc-esp-espidf/release/esp32_rustboard 
 
 use anyhow;
 use embassy_futures::select::select3;
-use esp32_nimble::utilities::mutex::Mutex;
 use esp32_rustboard::*;
 use esp_idf_hal::task::block_on;
 use heapless::FnvIndexMap;
-use spin::{Mutex, MutexGuard};
+use spin::Mutex;
 
 use crate::ble::ble_send_keys;
 use crate::config::config::*;
@@ -26,15 +25,12 @@ fn main() -> anyhow::Result<()> {
     let keys_pressed: Mutex<FnvIndexMap<Key, Debounce, PRESSED_KEYS_INDEXMAP_SIZE>> =
         Mutex::new(FnvIndexMap::new());
 
-    /* initialize last_pressed_key shared info */
-    let last_pressed_key: Mutex<Key> = Key { row: 0, col: 0 };
-
     /* run the tasks concurrently */
     block_on(async {
         select3(
             ble_send_keys(&keys_pressed),
-            scan_grid(&keys_pressed, &last_pressed_key),
-            calculate_debounce(&keys_pressed, &last_pressed_key),
+            scan_grid(&keys_pressed),
+            calculate_debounce(&keys_pressed),
         )
         .await;
     });
