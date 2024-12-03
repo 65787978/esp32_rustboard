@@ -153,16 +153,16 @@ pub async fn scan_grid(
                 for col in matrix.cols.iter() {
                     /* if a col is high */
                     if col.is_high() {
-                        /* check if the last_pressed_key is the same as the current */
-                        if (Key {
-                            row: row_count,
-                            col: col_count,
-                        }) != last_pressed_key
-                        {
-                            /* lock the hashmap */
-                            if let Some(mut keys_pressed) = keys_pressed.try_lock() {
-                                /* check if the last pressed key is the same as the currently pressed key */
-                                if let Some((_key_last, value_last)) = keys_pressed.last_mut() {
+                        /* lock the hashmap */
+                        if let Some(mut keys_pressed) = keys_pressed.try_lock() {
+                            /* get the last key in the hashmap */
+                            if let Some((_key_last, value_last)) = keys_pressed.last_mut() {
+                                /* check if the last_pressed_key is the same as the current */
+                                if (Key {
+                                    row: row_count,
+                                    col: col_count,
+                                }) != last_pressed_key
+                                {
                                     value_last.key_state = KEY_RELEASED;
                                     /* store pressed keys */
                                     keys_pressed
@@ -189,6 +189,8 @@ pub async fn scan_grid(
                                         row: row_count,
                                         col: col_count,
                                     };
+                                } else {
+                                    value_last.key_pressed_time = Instant::now();
                                 }
                             }
                         }
