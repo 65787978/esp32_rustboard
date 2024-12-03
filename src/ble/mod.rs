@@ -305,7 +305,7 @@ pub async fn ble_send_keys(
                         }
                     }
 
-                    /* if key has been debounced, add it to be removed */
+                    /* remove the sent keys */
                     for key in pressed_keys_to_remove.iter() {
                         keys_pressed.remove(key).unwrap();
                     }
