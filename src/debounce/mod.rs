@@ -5,14 +5,16 @@ use crate::{
 };
 use embassy_time::Instant;
 use heapless::FnvIndexMap;
-use spin::Mutex;
+use spin::mutex::Mutex;
+
+pub const KEY_PRESSED: u8 = 1;
+pub const KEY_RELEASED: u8 = 2;
+pub const KEY_READY_FOR_REMOVAL: u8 = 3;
 
 #[derive(Debug)]
 pub struct Debounce {
     pub key_pressed_time: Instant,
-    pub key_ready_for_removal: bool,
-    pub key_falling_edge: bool,
-    pub key_rising_edge: bool,
+    pub key_state: u8,
 }
 
 pub async fn calculate_debounce(
@@ -23,9 +25,11 @@ pub async fn calculate_debounce(
         if let Some(mut keys_pressed) = keys_pressed.try_lock() {
             /* itter throught the pressed keys */
             for (_key, debounce) in keys_pressed.iter_mut() {
-                /* check if the key has passed the debounce delay */
-                if debounce.key_rising_edge {
-                    debounce.key_ready_for_removal = true;
+                /* check if the key has passed the debounce delay or has been released */
+                if (Instant::now() >= debounce.key_pressed_time + DEBOUNCE_DELAY)
+                    | (debounce.key_state == KEY_RELEASED)
+                {
+                    debounce.key_state = KEY_READY_FOR_REMOVAL;
                 }
             }
         }
