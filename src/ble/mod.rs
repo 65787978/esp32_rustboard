@@ -250,26 +250,38 @@ pub async fn ble_send_keys(
                                 /* get the pressed key */
                                 if let Some(valid_key) = layers.get(&key.row, &key.col) {
                                     /* check and set the modifier */
-                                    layers.set_modifier(
-                                        valid_key,
-                                        &mut ble_keyboard.key_report.modifiers,
-                                    );
+                                    match layers.set_modifier(valid_key) {
+                                        Some(modifier) => {
+                                            ble_keyboard.key_report.modifiers |= modifier;
 
-                                    /* check if the key count is less than 6 */
-                                    if ble_keyboard.key_count < 6 {
-                                        /* set the key to the buffer */
-                                        ble_keyboard.key_report.keys[ble_keyboard.key_count] =
-                                            *valid_key as u8;
+                                            ble_keyboard.send_report();
 
-                                        log::info!("KEY: {}", *valid_key as u8);
+                                            log::info!("Modifier added: {}", ble_keyboard.key_report.modifiers);
 
-                                        /* increment the key count */
-                                        ble_keyboard.key_count += 1;
+                                        }
+                                        None => {
+                                            /* check if the key count is less than 6 */
+                                            if ble_keyboard.key_count < 6 {
+                                                /* set the key to the buffer */
+                                                ble_keyboard.key_report.keys
+                                                    [ble_keyboard.key_count] = *valid_key as u8;
 
-                                        /* send the report with the new key */
-                                        ble_keyboard.send_report();
-                                    } else {
-                                        break;
+                                                log::info!("KEY: {}", *valid_key as u8);
+
+                                                /* increment the key count */
+                                                ble_keyboard.key_count += 1;
+
+                                                log::info!(
+                                                    "Key_count added: {}",
+                                                    ble_keyboard.key_count
+                                                );
+
+                                                /* send the report with the new key */
+                                                ble_keyboard.send_report();
+                                            } else {
+                                                break;
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -278,24 +290,43 @@ pub async fn ble_send_keys(
                             KEY_RELEASED => {
                                 /* get the mapped key from the hashmap */
                                 if let Some(valid_key) = layers.get(&key.row, &key.col) {
-                                    let valid_key = *valid_key as u8;
-                                    /*check if the key is contained in the report */
-                                    if ble_keyboard.key_report.keys.contains(&valid_key) {
-                                        /* go over the keys in the report */
-                                        for key_in_report in ble_keyboard.key_report.keys.iter_mut()
-                                        {
-                                            if *key_in_report == valid_key {
-                                                /* remove the key from the report */
-                                                *key_in_report = 0;
+                                    match layers.set_modifier(valid_key) {
+                                        Some(modifier) => {
+                                            /* if the key is modifier, remove it from the key report */
+                                            ble_keyboard.key_report.modifiers &= !modifier;
 
-                                                /*decrement the count as the key is removed from the report */
-                                                ble_keyboard.key_count -= 1;
+                                            ble_keyboard.send_report();
+
+                                            log::info!("Modifier removed: {}", ble_keyboard.key_report.modifiers);
+                                        }
+                                        None => {
+                                            let valid_key = *valid_key as u8;
+                                            /*check if the key is contained in the report */
+                                            if ble_keyboard.key_report.keys.contains(&valid_key) {
+                                                /* go over the keys in the report */
+                                                for key_in_report in ble_keyboard.key_report.keys.iter_mut()
+                                                {
+                                                    if *key_in_report == valid_key {
+                                                        /* remove the key from the report */
+                                                        *key_in_report = 0;
+        
+                                                        /*decrement the count as the key is removed from the report */
+                                                        ble_keyboard.key_count -= 1;
+        
+                                                        log::info!(
+                                                            "Key_count removed: {}",
+                                                            ble_keyboard.key_count
+                                                        );
+                                                    }
+                                                }
+        
+                                                /* send the new report without the key */
+                                                ble_keyboard.send_report();
                                             }
                                         }
-
-                                        /* send the new report without the key */
-                                        ble_keyboard.send_report();
                                     }
+
+
                                 }
 
                                 /* if key has been debounced, add it to be removed */
@@ -311,17 +342,14 @@ pub async fn ble_send_keys(
                         keys_pressed.remove(key).unwrap();
                     }
                 }
-
-                delay_us(10).await;
-            } else {
-                log::info!("Keyboard not connected!");
-
-                /* reset ble power save flag*/
-                set_ble_power_flag = true;
-
-                /* sleep for 100ms */
-                delay_ms(100).await;
             }
+
+            delay_us(10).await;
+        } else {
+            log::info!("Keyboard not connected!");
+
+            /* sleep for 100ms */
+            delay_ms(100).await;
         }
     }
 }
