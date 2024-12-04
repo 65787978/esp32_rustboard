@@ -1,4 +1,5 @@
 /* Scan codes - HID Keyboard: https://gist.github.com/MightyPork/6da26e382a7ad91b5496ee55fdc73db2 */
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum HidKeys {
     None = 0x00,
@@ -164,23 +165,29 @@ pub enum HidKeys {
     ClearAgain = 0xA2,
     Crsel = 0xA3,
     Exsel = 0xA4,
+
+    /* dummy modifiers */
+    Shift = 0xB1,
+    Control = 0xB2,
+    Alt = 0xB3,
+    Super = 0xB4,
 }
 
 pub enum HidModifiers {
     None = 0x00,
-    Shift = 0x01,
-    Control = 0x02,
+    Control = 0x01,
+    Shift = 0x02,
     Alt = 0x04,
     Super = 0x08,
 }
 
-impl From<u8> for HidModifiers {
-    fn from(modifier: u8) -> Self {
-        match modifier {
-            0x01 => Self::Shift,
-            0x02 => Self::Control,
-            0x04 => Self::Alt,
-            0x08 => Self::Super,
+impl From<HidKeys> for HidModifiers {
+    fn from(key: HidKeys) -> Self {
+        match key {
+            HidKeys::Shift => Self::Shift,
+            HidKeys::Control => Self::Control,
+            HidKeys::Alt => Self::Alt,
+            HidKeys::Super => Self::Super,
             _ => Self::None,
         }
     }

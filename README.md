@@ -8,9 +8,9 @@ This project aims to provide a customizable and efficient firmware solution for 
 
 ## Current Bugs
 
-- **The key 'A' is not being recognized by the OS**: The keycode for the 'A' character is not being recognized by the OS.
-- **Modifier keys are not working**: The current implementation of the sending logic is needs to be improved.
 - **Both halves of the keyboard are connected individually**: As of now, both keyboard halves are connected as indipendant keyboards. This will be fixed in the future.
+- ~~**The key 'A' is not being recognized by the OS**: The keycode for the 'A' character is not being recognized by the OS~~ - Fixed.
+- ~~**Modifier keys are not working**: The current implementation of the sending logic is needs to be improved~~ - Fixed.
 
 ## How to Build
 
