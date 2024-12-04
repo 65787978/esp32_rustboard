@@ -1,4 +1,4 @@
-use crate::debounce::{KEY_PRESSED, KEY_RELEASED};
+use crate::debounce::KEY_PRESSED;
 use crate::delay::*;
 use crate::{config::config::*, debounce::Debounce};
 use embassy_time::Instant;
@@ -134,9 +134,6 @@ pub async fn scan_grid(
     let mut row_count: i8 = 0;
     let mut col_count: i8 = 0;
 
-    /* initialize last_pressed_key shared info */
-    let mut last_pressed_key: Key = Key { row: 0, col: 0 };
-
     loop {
         if Instant::now() >= matrix.enter_sleep_delay {
             matrix.enter_sleep_mode();
@@ -155,44 +152,24 @@ pub async fn scan_grid(
                     if col.is_high() {
                         /* lock the hashmap */
                         if let Some(mut keys_pressed) = keys_pressed.try_lock() {
-                            /* get the last key in the hashmap */
-                            if let Some((_key_last, value_last)) = keys_pressed.last_mut() {
-                                /* check if the last_pressed_key is the same as the current */
-                                if (Key {
-                                    row: row_count,
-                                    col: col_count,
-                                }) != last_pressed_key
-                                {
-                                    value_last.key_state = KEY_RELEASED;
-                                    /* store pressed keys */
-                                    keys_pressed
-                                        .insert(
-                                            Key {
-                                                row: row_count,
-                                                col: col_count,
-                                            },
-                                            Debounce {
-                                                key_pressed_time: Instant::now(),
-                                                key_state: KEY_PRESSED,
-                                            },
-                                        )
-                                        .expect("Failed to store key in the hashmap!");
-
-                                    log::info!(
-                                        "Pressed keys stored! X:{}, Y:{}",
-                                        row_count,
-                                        col_count
-                                    );
-
-                                    /* store the current key as the last pressed key */
-                                    last_pressed_key = Key {
+                            /* Inserts a key-value pair into the map.
+                             * If an equivalent key already exists in the map: the key remains and retains in its place in the order, its corresponding value is updated with value and the older value is returned inside Some(_).
+                             * If no equivalent key existed in the map: the new key-value pair is inserted, last in order, and None is returned.
+                             */
+                            keys_pressed
+                                .insert(
+                                    Key {
                                         row: row_count,
                                         col: col_count,
-                                    };
-                                } else {
-                                    value_last.key_pressed_time = Instant::now();
-                                }
-                            }
+                                    },
+                                    Debounce {
+                                        key_pressed_time: Instant::now(),
+                                        key_state: KEY_PRESSED,
+                                    },
+                                )
+                                .expect("Error setting new key in the hashmap");
+
+                            log::info!("Pressed keys stored! X:{}, Y:{}", row_count, col_count);
                         }
 
                         /* reset sleep delay if a key is pressed */
