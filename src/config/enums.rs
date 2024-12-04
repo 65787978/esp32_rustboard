@@ -175,8 +175,8 @@ pub enum HidKeys {
 
 pub enum HidModifiers {
     None = 0x00,
-    Shift = 0x01,
-    Control = 0x02,
+    Control = 0x01,
+    Shift = 0x02,
     Alt = 0x04,
     Super = 0x08,
 }
