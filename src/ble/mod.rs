@@ -3,7 +3,7 @@
 extern crate alloc;
 
 use crate::config::{config::*, layers::*};
-use crate::debounce::{Debounce, KEY_PRESSED, KEY_READY_FOR_REMOVAL};
+use crate::debounce::{Debounce, KEY_PRESSED, KEY_RELEASED};
 use crate::delay::*;
 use crate::matrix::Key;
 
@@ -275,7 +275,7 @@ pub async fn ble_send_keys(
                             }
 
                             /* check if the key is calculated for debounce */
-                            KEY_READY_FOR_REMOVAL => {
+                            KEY_RELEASED => {
                                 /* get the mapped key from the hashmap */
                                 if let Some(valid_key) = layers.get(&key.row, &key.col) {
                                     let valid_key = *valid_key as u8;
