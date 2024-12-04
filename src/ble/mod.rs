@@ -250,7 +250,7 @@ pub async fn ble_send_keys(
                                 /* get the pressed key */
                                 if let Some(valid_key) = layers.get(&key.row, &key.col) {
                                     /* check and set the modifier */
-                                    match layers.set_modifier(valid_key) {
+                                    match layers.check_modifier(valid_key) {
                                         Some(modifier) => {
                                             ble_keyboard.key_report.modifiers |= modifier;
 
@@ -290,7 +290,7 @@ pub async fn ble_send_keys(
                             KEY_RELEASED => {
                                 /* get the mapped key from the hashmap */
                                 if let Some(valid_key) = layers.get(&key.row, &key.col) {
-                                    match layers.set_modifier(valid_key) {
+                                    match layers.check_modifier(valid_key) {
                                         Some(modifier) => {
                                             /* if the key is modifier, remove it from the key report */
                                             ble_keyboard.key_report.modifiers &= !modifier;
