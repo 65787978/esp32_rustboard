@@ -259,9 +259,9 @@ pub async fn ble_send_keys(
                                     if ble_keyboard.key_count < 6 {
                                         /* set the key to the buffer */
                                         ble_keyboard.key_report.keys[ble_keyboard.key_count] =
-                                            *valid_key;
+                                            *valid_key as u8;
 
-                                        log::info!("KEY: {}", *valid_key);
+                                        log::info!("KEY: {}", *valid_key as u8);
 
                                         /* increment the key count */
                                         ble_keyboard.key_count += 1;
@@ -278,12 +278,13 @@ pub async fn ble_send_keys(
                             KEY_READY_FOR_REMOVAL => {
                                 /* get the mapped key from the hashmap */
                                 if let Some(valid_key) = layers.get(&key.row, &key.col) {
+                                    let valid_key = *valid_key as u8;
                                     /*check if the key is contained in the report */
-                                    if ble_keyboard.key_report.keys.contains(valid_key) {
+                                    if ble_keyboard.key_report.keys.contains(&valid_key) {
                                         /* go over the keys in the report */
                                         for key_in_report in ble_keyboard.key_report.keys.iter_mut()
                                         {
-                                            if *key_in_report == *valid_key {
+                                            if *key_in_report == valid_key {
                                                 /* remove the key from the report */
                                                 *key_in_report = 0;
 
