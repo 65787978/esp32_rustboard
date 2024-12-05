@@ -4,6 +4,7 @@ use crate::{
     matrix::Key,
 };
 
+use embassy_time::Instant;
 use heapless::FnvIndexMap;
 pub enum Layer {
     Base,
@@ -14,6 +15,7 @@ pub struct Layers {
     pub upper: FnvIndexMap<(i8, i8), HidKeys, LAYER_INDEXMAP_SIZE>,
     pub state: Layer,
     layer_key: Key,
+    layer_key_last_pressed_time: Instant,
 }
 
 impl Layers {
@@ -23,6 +25,7 @@ impl Layers {
             upper: FnvIndexMap::new(),
             state: Layer::Base,
             layer_key: LAYER_KEY,
+            layer_key_last_pressed_time: Instant::now(),
         }
     }
     pub fn load_layout(&mut self) {
@@ -31,7 +34,10 @@ impl Layers {
 
     pub fn set_layer(&mut self, key: &Key, debounce: &mut Debounce) {
         /* check if the key pressed is the layer key */
-        if *key == self.layer_key {
+        if (*key == self.layer_key)
+            & ((self.layer_key_last_pressed_time + DEBOUNCE_DELAY_LAYER_KEY)
+                <= debounce.key_pressed_time)
+        {
             /* change the layer */
             match self.state {
                 Layer::Base => {
@@ -42,6 +48,7 @@ impl Layers {
                 }
             }
 
+            self.layer_key_last_pressed_time = Instant::now();
             debounce.key_state = KEY_RELEASED;
         }
     }
