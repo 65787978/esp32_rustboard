@@ -19,6 +19,7 @@ To compile the firmware, follow these steps:
 1. **Install Rust**: Ensure you have Rust installed on your system. You can install it using [rustup](https://rustup.rs/).
 
 2. **Clone the Repository**:
+
    ```bash
    git clone https://github.com/65787978/esp32_rustboard.git
    cd esp32_rustboard
@@ -27,17 +28,19 @@ To compile the firmware, follow these steps:
 3. **Set Up the ESP32 Rust Toolchain**: Follow the instructions in the [ESP-IDF documentation GitHub](https://github.com/esp-rs) to set up the ESP32 Rust toolchain.
 
 4. **Build the Firmware**:
-     For left half of the keyboard:
+   For left half of the keyboard with 'qwerty' layout:
+
    ```bash
-   cargo build --release --features "left-side"
-   ```
-   
-      For right half of the keyboard:
-   ```bash
-   cargo build --release --features "right-side"
+   cargo build --release --features "qwerty","left-side"
    ```
 
-6. **Flash the Firmware**: Connect your ESP32C3 device and use the following command to flash the firmware:
+   For right half of the keyboard with 'qwerty' layout:
+
+   ```bash
+   cargo build --release --features "qwerty","right-side"
+   ```
+
+5. **Flash the Firmware**: Connect your ESP32C3 device and use the following command to flash the firmware:
    ```bash
    espflash flash ./target/riscv32imc-esp-espidf/release/esp32_rustboard --monitor
    ```

@@ -13,7 +13,7 @@ pub const PRESSED_KEYS_INDEXMAP_SIZE: usize = 16;
 pub const LAYER_INDEXMAP_SIZE: usize = 32;
 
 #[cfg(feature = "left-side")]
-pub const LAYER_KEY: Key = Key {row: 3, col: 3};
+pub const LAYER_KEY: Key = Key { row: 3, col: 3 };
 
 #[cfg(feature = "right-side")]
-pub const LAYER_KEY: Key = Key {row: 3, col: 2};
+pub const LAYER_KEY: Key = Key { row: 3, col: 2 };
