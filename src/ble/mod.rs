@@ -231,7 +231,7 @@ pub async fn ble_send_keys(
                         match debounce.key_state {
                             KEY_PRESSED => {
                                 /* check and set the layer */
-                                layers.set_layer(&key.row, &key.col);
+                                layers.set_layer(&key, &debounce);
 
                                 /* get the pressed key */
                                 if let Some(valid_key) = layers.get(&key.row, &key.col) {
@@ -248,26 +248,29 @@ pub async fn ble_send_keys(
                                             );
                                         }
                                         None => {
-                                            /* check if the key count is less than 6 */
-                                            if ble_keyboard.key_count < 6 {
-                                                /* set the key to the buffer */
-                                                ble_keyboard.key_report.keys
-                                                    [ble_keyboard.key_count] = *valid_key as u8;
+                                            /* do not store the layer key in the report */
+                                            if *key != LAYER_KEY {
+                                                /* check if the key count is less than 6 */
+                                                if ble_keyboard.key_count < 6 {
+                                                    /* set the key to the buffer */
+                                                    ble_keyboard.key_report.keys
+                                                        [ble_keyboard.key_count] = *valid_key as u8;
 
-                                                log::info!("KEY: {}", *valid_key as u8);
+                                                    log::info!("KEY: {}", *valid_key as u8);
 
-                                                /* increment the key count */
-                                                ble_keyboard.key_count += 1;
+                                                    /* increment the key count */
+                                                    ble_keyboard.key_count += 1;
 
-                                                log::info!(
-                                                    "Key_count added: {}",
-                                                    ble_keyboard.key_count
-                                                );
+                                                    log::info!(
+                                                        "Key_count added: {}",
+                                                        ble_keyboard.key_count
+                                                    );
 
-                                                /* send the report with the new key */
-                                                ble_keyboard.send_report();
-                                            } else {
-                                                break;
+                                                    /* send the report with the new key */
+                                                    ble_keyboard.send_report();
+                                                } else {
+                                                    break;
+                                                }
                                             }
                                         }
                                     }
