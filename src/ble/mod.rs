@@ -231,7 +231,7 @@ pub async fn ble_send_keys(
                         match debounce.key_state {
                             KEY_PRESSED => {
                                 /* check and set the layer */
-                                layers.set_layer(&key, &debounce);
+                                layers.set_layer(&key, debounce);
 
                                 /* get the pressed key */
                                 if let Some(valid_key) = layers.get(&key.row, &key.col) {
