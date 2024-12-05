@@ -203,21 +203,12 @@ pub async fn ble_send_keys(
     /* initialize layers */
     let mut layers = Layers::new();
 
-    /* initialize set_ble_power_flag */
-    let mut set_ble_power_flag = true;
+    /* load the specified layout */
+    layers.load_layout();
 
     /* Run the main loop */
     loop {
         if ble_keyboard.connected() {
-            /* set ble power save */
-            if set_ble_power_flag {
-                /* set power save */
-                ble_keyboard.set_ble_power_save();
-
-                /* set flag to false */
-                set_ble_power_flag = false;
-            }
-
             /* try to lock the hashmap */
             if let Some(mut keys_pressed) = keys_pressed.try_lock() {
                 /* store the keys that need to be removed */
