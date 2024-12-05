@@ -203,20 +203,6 @@ pub async fn ble_send_keys(
     /* initialize layers */
     let mut layers = Layers::new();
 
-    #[cfg(feature = "left-side")]
-    {
-        /* For left side of the keyboard */
-        layers.initialize_base_layer_left();
-        layers.initialize_upper_layer_left();
-    }
-
-    #[cfg(feature = "right-side")]
-    {
-        /* For right side of the keyboard */
-        layers.initialize_base_layer_right();
-        layers.initialize_upper_layer_right();
-    }
-
     /* initialize set_ble_power_flag */
     let mut set_ble_power_flag = true;
 
@@ -256,8 +242,10 @@ pub async fn ble_send_keys(
 
                                             ble_keyboard.send_report();
 
-                                            log::info!("Modifier added: {}", ble_keyboard.key_report.modifiers);
-
+                                            log::info!(
+                                                "Modifier added: {}",
+                                                ble_keyboard.key_report.modifiers
+                                            );
                                         }
                                         None => {
                                             /* check if the key count is less than 6 */
@@ -297,36 +285,38 @@ pub async fn ble_send_keys(
 
                                             ble_keyboard.send_report();
 
-                                            log::info!("Modifier removed: {}", ble_keyboard.key_report.modifiers);
+                                            log::info!(
+                                                "Modifier removed: {}",
+                                                ble_keyboard.key_report.modifiers
+                                            );
                                         }
                                         None => {
                                             let valid_key = *valid_key as u8;
                                             /*check if the key is contained in the report */
                                             if ble_keyboard.key_report.keys.contains(&valid_key) {
                                                 /* go over the keys in the report */
-                                                for key_in_report in ble_keyboard.key_report.keys.iter_mut()
+                                                for key_in_report in
+                                                    ble_keyboard.key_report.keys.iter_mut()
                                                 {
                                                     if *key_in_report == valid_key {
                                                         /* remove the key from the report */
                                                         *key_in_report = 0;
-        
+
                                                         /*decrement the count as the key is removed from the report */
                                                         ble_keyboard.key_count -= 1;
-        
+
                                                         log::info!(
                                                             "Key_count removed: {}",
                                                             ble_keyboard.key_count
                                                         );
                                                     }
                                                 }
-        
+
                                                 /* send the new report without the key */
                                                 ble_keyboard.send_report();
                                             }
                                         }
                                     }
-
-
                                 }
 
                                 /* if key has been debounced, add it to be removed */
