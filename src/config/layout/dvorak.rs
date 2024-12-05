@@ -13,9 +13,9 @@ UPPER LAYER:
 
 X \ Y|  0  |  1  |  2  |  3  |  4  |  5  |           X \ Y|  0  |  1  |  2  |  3  |  4  |  5  |
    0 |_ESC_|__1__|__2__|__3__|__4__|__5__|              0 |__6__|__7__|__8__|__9__|__0__|_____|
-   1 |_BSP_|_____|_____|_____|copy_|paste|              1 |_____|_left|_down|__up_|_rght|_____|
+   1 |_BSP_|_ALT_|_____|_____|copy_|paste|              1 |_____|_left|_down|__up_|_rght|_____|
    2 |_CTL_|_____|_____|_____|_____|prtsc|              2 |__\__|__[__|__]__|_____|_____|_____|
-   3                   |_LYR_|_SPC_|_SFT_|              3 |_ALT_|_ENT_|_LYR_|
+   3                   |_LYR_|_SPC_|_SFT_|              3 |_TAB_|_ENT_|_LYR_|
 
 *********************************************************************************************
 */
@@ -26,6 +26,7 @@ pub fn layout() -> Layers {
 
     #[cfg(feature = "left-side")]
     {
+        /* BASE LAYER LAYOUT */
         layout.base.insert((0, 0), HidKeys::Escape).unwrap(); // ESC
         layout.base.insert((0, 1), HidKeys::Quote).unwrap(); // '
         layout.base.insert((0, 2), HidKeys::Comma).unwrap(); // ,
@@ -54,6 +55,7 @@ pub fn layout() -> Layers {
         layout.base.insert((3, 4), HidKeys::Space).unwrap(); // SPACE
         layout.base.insert((3, 5), HidKeys::Shift).unwrap(); // SHIFT
 
+        /* UPPER LAYER LAYOUT */
         layout.upper.insert((0, 0), HidKeys::Escape).unwrap(); // ESC
         layout.upper.insert((0, 1), HidKeys::Num1).unwrap(); // 1
         layout.upper.insert((0, 2), HidKeys::Num2).unwrap(); // 2
@@ -62,7 +64,7 @@ pub fn layout() -> Layers {
         layout.upper.insert((0, 5), HidKeys::Num5).unwrap(); // 5
 
         layout.upper.insert((1, 0), HidKeys::Bspace).unwrap(); // BACKSPACE
-        layout.upper.insert((1, 1), HidKeys::Undefined).unwrap(); // Undefined
+        layout.upper.insert((1, 1), HidKeys::Alt).unwrap(); // ALT
         layout.upper.insert((1, 2), HidKeys::Undefined).unwrap(); // Undefined
         layout.upper.insert((1, 3), HidKeys::Undefined).unwrap(); // Undefined
         layout.upper.insert((1, 4), HidKeys::Copy).unwrap(); // COPY
@@ -83,8 +85,9 @@ pub fn layout() -> Layers {
         layout.upper.insert((3, 5), HidKeys::Shift).unwrap(); // SHIFT
     }
 
-    #[cfg(feature = "left-side")]
+    #[cfg(feature = "right-side")]
     {
+        /* BASE LAYER LAYOUT */
         layout.base.insert((0, 0), HidKeys::F).unwrap(); // f
         layout.base.insert((0, 1), HidKeys::G).unwrap(); // g
         layout.base.insert((0, 2), HidKeys::C).unwrap(); // c
@@ -106,13 +109,14 @@ pub fn layout() -> Layers {
         layout.base.insert((2, 4), HidKeys::Z).unwrap(); // z
         layout.base.insert((2, 5), HidKeys::Equal).unwrap(); // =
 
-        layout.base.insert((3, 0), HidKeys::Alt).unwrap(); // ALT
+        layout.base.insert((3, 0), HidKeys::Tab).unwrap(); // TAB
         layout.base.insert((3, 1), HidKeys::Enter).unwrap(); // ENTER
         layout.base.insert((3, 2), HidKeys::Undefined).unwrap(); // LAYER
         layout.base.insert((3, 3), HidKeys::Undefined).unwrap(); // Undefined
         layout.base.insert((3, 4), HidKeys::Undefined).unwrap(); // Undefined
         layout.base.insert((3, 5), HidKeys::Undefined).unwrap(); // Undefined
 
+        /* UPPER LAYER LAYOUT */
         layout.upper.insert((0, 0), HidKeys::Num6).unwrap(); // 6
         layout.upper.insert((0, 1), HidKeys::Num7).unwrap(); // 7
         layout.upper.insert((0, 2), HidKeys::Num8).unwrap(); // 8
@@ -134,7 +138,7 @@ pub fn layout() -> Layers {
         layout.upper.insert((2, 4), HidKeys::Undefined).unwrap(); // Undefined
         layout.upper.insert((2, 5), HidKeys::Undefined).unwrap(); // Undefined
 
-        layout.upper.insert((3, 0), HidKeys::Alt).unwrap(); // ALT
+        layout.upper.insert((3, 0), HidKeys::Tab).unwrap(); // TAB
         layout.upper.insert((3, 1), HidKeys::Enter).unwrap(); // ENTER
         layout.upper.insert((3, 2), HidKeys::Undefined).unwrap(); // LAYER
         layout.upper.insert((3, 3), HidKeys::Undefined).unwrap(); // Undefined

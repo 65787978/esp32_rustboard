@@ -83,7 +83,7 @@ pub fn layout() -> Layers {
         layout.upper.insert((3, 5), HidKeys::Shift).unwrap(); // SHIFT
     }
 
-    #[cfg(feature = "left-side")]
+    #[cfg(feature = "right-side")]
     {
         layout.base.insert((0, 0), HidKeys::F).unwrap(); // f
         layout.base.insert((0, 1), HidKeys::G).unwrap(); // g
