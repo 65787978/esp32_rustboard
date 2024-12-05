@@ -1,5 +1,6 @@
 use crate::{
     config::{config::*, enums::*, layout::*},
+    debounce::{Debounce, KEY_RELEASED},
     matrix::Key,
 };
 
@@ -28,13 +29,9 @@ impl Layers {
         *self = provide_layout();
     }
 
-    pub fn set_layer(&mut self, row: &i8, col: &i8) {
+    pub fn set_layer(&mut self, key: &Key, debounce: &mut Debounce) {
         /* check if the key pressed is the layer key */
-        if (Key {
-            row: *row,
-            col: *col,
-        }) == self.layer_key
-        {
+        if *key == self.layer_key {
             /* change the layer */
             match self.state {
                 Layer::Base => {
@@ -44,6 +41,8 @@ impl Layers {
                     self.state = Layer::Base;
                 }
             }
+
+            debounce.key_state = KEY_RELEASED;
         }
     }
 
