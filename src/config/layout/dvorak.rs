@@ -13,7 +13,7 @@ UPPER LAYER:
 
 X \ Y|  0  |  1  |  2  |  3  |  4  |  5  |           X \ Y|  0  |  1  |  2  |  3  |  4  |  5  |
    0 |_ESC_|__1__|__2__|__3__|__4__|__5__|              0 |__6__|__7__|__8__|__9__|__0__|_____|
-   1 |_BSP_|_ALT_|_____|_____|copy_|paste|              1 |_____|_left|_down|__up_|_rght|_____|
+   1 |_BSP_|_ALT_|_SUP_|_____|copy_|paste|              1 |_____|_left|_down|__up_|_rght|_____|
    2 |_CTL_|_____|_____|_____|_____|prtsc|              2 |__\__|__[__|__]__|_____|_____|_____|
    3                   |_LYR_|_SPC_|_SFT_|              3 |_TAB_|_ENT_|_LYR_|
 
@@ -65,7 +65,7 @@ pub fn layout() -> Layers {
 
         layout.upper.insert((1, 0), HidKeys::Bspace).unwrap(); // BACKSPACE
         layout.upper.insert((1, 1), HidKeys::Alt).unwrap(); // ALT
-        layout.upper.insert((1, 2), HidKeys::Undefined).unwrap(); // Undefined
+        layout.upper.insert((1, 2), HidKeys::Super).unwrap(); // SUPER
         layout.upper.insert((1, 3), HidKeys::Undefined).unwrap(); // Undefined
         layout.upper.insert((1, 4), HidKeys::Copy).unwrap(); // COPY
         layout.upper.insert((1, 5), HidKeys::Paste).unwrap(); // PASTE
