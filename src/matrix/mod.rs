@@ -1,4 +1,4 @@
-use crate::debounce::KEY_PRESSED;
+use crate::debounce::{KEY_PRESSED, KEY_RELEASED};
 use crate::delay::*;
 use crate::{config::config::*, debounce::Debounce};
 use embassy_time::Instant;
@@ -17,6 +17,11 @@ pub struct Key {
     pub col: i8,
 }
 
+impl Key {
+    fn new(row: i8, col: i8) -> Key {
+        Key { row, col }
+    }
+}
 pub struct PinMatrix<'a> {
     pub rows: [PinDriver<'a, AnyOutputPin, Output>; ROWS],
     pub cols: [PinDriver<'a, AnyIOPin, Input>; COLS],
@@ -131,8 +136,9 @@ pub async fn scan_grid(
     matrix.set_cols_interrupt();
 
     /* initialize counts */
-    let mut row_count: i8 = 0;
-    let mut col_count: i8 = 0;
+    let mut count = Key::new(0, 0);
+
+    let mut last_pressed_key = Key::new(-1, -1);
 
     loop {
         if Instant::now() >= matrix.enter_sleep_delay {
@@ -148,10 +154,10 @@ pub async fn scan_grid(
 
                 /* check if a col is high */
                 for col in matrix.cols.iter() {
-                    /* if a col is high */
-                    if col.is_high() {
-                        /* lock the hashmap */
-                        if let Some(mut keys_pressed) = keys_pressed.try_lock() {
+                    /* lock the hashmap */
+                    if let Some(mut keys_pressed) = keys_pressed.try_lock() {
+                        /* if a col is high */
+                        if col.is_high() {
                             /* Inserts a key-value pair into the map.
                              * If an equivalent key already exists in the map: the key remains and retains in its place in the order, its corresponding value is updated with value and the older value is returned inside Some(_).
                              * If no equivalent key existed in the map: the new key-value pair is inserted, last in order, and None is returned.
@@ -159,8 +165,8 @@ pub async fn scan_grid(
                             keys_pressed
                                 .insert(
                                     Key {
-                                        row: row_count,
-                                        col: col_count,
+                                        row: count.row,
+                                        col: count.col,
                                     },
                                     Debounce {
                                         key_pressed_time: Instant::now(),
@@ -169,26 +175,40 @@ pub async fn scan_grid(
                                 )
                                 .expect("Error setting new key in the hashmap");
 
-                            log::info!("Pressed keys stored! X:{}, Y:{}", row_count, col_count);
-                        }
+                            log::info!("Pressed keys stored! X:{}, Y:{}", count.row, count.col);
 
-                        /* reset sleep delay if a key is pressed */
-                        matrix.sleep_delay_key_pressed = true;
+                            /* reset sleep delay if a key is pressed */
+                            matrix.sleep_delay_key_pressed = true;
+
+                            /* in case the last pressed key is different than the current pressed key */
+                            if last_pressed_key != count {
+                                /* get the last pressed key's value and set the state to released */
+                                if let Some(last_stored_value) =
+                                    keys_pressed.get_mut(&last_pressed_key)
+                                {
+                                    last_stored_value.key_state = KEY_RELEASED;
+                                }
+
+                                /* store the pressed key as the last pressed key */
+                                last_pressed_key = count;
+                            }
+                        }
                     }
                     /* increment col */
-                    col_count += 1;
+                    count.col += 1;
                 }
                 /* set row to low */
                 row.set_low().unwrap();
 
                 /* increment row */
-                row_count += 1;
+                count.row += 1;
 
                 /* reset col count */
-                col_count = 0;
+                count.col = 0;
             }
+
             /* reset row count */
-            row_count = 0;
+            count.row = 0;
 
             /* if a key has been pressed */
             if matrix.sleep_delay_key_pressed {
