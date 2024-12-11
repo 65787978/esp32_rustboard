@@ -206,8 +206,6 @@ pub async fn ble_send_keys(
     /* load the specified layout */
     layers.load_layout();
 
-    let mut last_sent_key = Key { row: -1, col: -1 };
-
     /* Run the main loop */
     loop {
         if ble_keyboard.connected() {
@@ -223,57 +221,45 @@ pub async fn ble_send_keys(
                         /*check the key debounce state */
                         match debounce.key_state {
                             KEY_PRESSED => {
-                                /* check if the new key is the same as the last sent key */
-                                if *key != last_sent_key {
-                                    /* check and set the layer */
-                                    layers.set_layer(&key, debounce);
+                                /* check and set the layer */
+                                layers.set_layer(&key, debounce);
 
-                                    /* get the pressed key */
-                                    if let Some(valid_key) = layers.get(&key.row, &key.col) {
-                                        /* check and set the modifier */
-                                        match layers.check_modifier(valid_key) {
-                                            Some(modifier) => {
-                                                ble_keyboard.key_report.modifiers |= modifier;
+                                /* get the pressed key */
+                                if let Some(valid_key) = layers.get(&key.row, &key.col) {
+                                    /* check and set the modifier */
+                                    match layers.check_modifier(valid_key) {
+                                        Some(modifier) => {
+                                            ble_keyboard.key_report.modifiers |= modifier;
 
-                                                ble_keyboard.send_report();
+                                            log::info!(
+                                                "Modifier added: {}",
+                                                ble_keyboard.key_report.modifiers
+                                            );
+                                        }
+                                        None => {
+                                            /* do not store the layer key in the report */
+                                            if *key != LAYER_KEY {
+                                                /* check if the key count is less than 6 */
+                                                if ble_keyboard.key_count < 6 {
+                                                    /* set the key to the buffer */
+                                                    ble_keyboard.key_report.keys
+                                                        [ble_keyboard.key_count] = *valid_key as u8;
 
-                                                log::info!(
-                                                    "Modifier added: {}",
-                                                    ble_keyboard.key_report.modifiers
-                                                );
-                                            }
-                                            None => {
-                                                /* do not store the layer key in the report */
-                                                if *key != LAYER_KEY {
-                                                    /* check if the key count is less than 6 */
-                                                    if ble_keyboard.key_count < 6 {
-                                                        /* set the key to the buffer */
-                                                        ble_keyboard.key_report.keys
-                                                            [ble_keyboard.key_count] =
-                                                            *valid_key as u8;
+                                                    log::info!("KEY: {}", *valid_key as u8);
 
-                                                        log::info!("KEY: {}", *valid_key as u8);
+                                                    /* increment the key count */
+                                                    ble_keyboard.key_count += 1;
 
-                                                        /* increment the key count */
-                                                        ble_keyboard.key_count += 1;
-
-                                                        log::info!(
-                                                            "Key_count added: {}",
-                                                            ble_keyboard.key_count
-                                                        );
-
-                                                        /* send the report with the new key */
-                                                        ble_keyboard.send_report();
-                                                    } else {
-                                                        break;
-                                                    }
+                                                    log::info!(
+                                                        "Key_count added: {}",
+                                                        ble_keyboard.key_count
+                                                    );
+                                                } else {
+                                                    break;
                                                 }
                                             }
                                         }
                                     }
-
-                                    /* set the new key as the last sent key */
-                                    last_sent_key = *key;
                                 }
                             }
                             /* check if the key is calculated for debounce */
@@ -284,8 +270,6 @@ pub async fn ble_send_keys(
                                         Some(modifier) => {
                                             /* if the key is modifier, remove it from the key report */
                                             ble_keyboard.key_report.modifiers &= !modifier;
-
-                                            ble_keyboard.send_report();
 
                                             log::info!(
                                                 "Modifier removed: {}",
@@ -313,9 +297,6 @@ pub async fn ble_send_keys(
                                                         );
                                                     }
                                                 }
-
-                                                /* send the new report without the key */
-                                                ble_keyboard.send_report();
                                             }
                                         }
                                     }
@@ -323,14 +304,14 @@ pub async fn ble_send_keys(
 
                                 /* if key has been debounced, add it to be removed */
                                 pressed_keys_to_remove.push(*key);
-
-                                /* reset the last sent key */
-                                last_sent_key = Key { row: -1, col: -1 };
                             }
 
                             _ => { /* do nothing */ }
                         }
                     }
+
+                    /* sent the new report */
+                    ble_keyboard.send_report();
 
                     /* remove the sent keys */
                     for key in pressed_keys_to_remove.iter() {
