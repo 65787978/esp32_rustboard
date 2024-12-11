@@ -1,4 +1,4 @@
-use crate::debounce::{KEY_PRESSED, KEY_RELEASED};
+use crate::debounce::KEY_PRESSED;
 use crate::delay::*;
 use crate::{config::config::*, debounce::Debounce};
 use embassy_time::Instant;
@@ -138,8 +138,6 @@ pub async fn scan_grid(
     /* initialize counts */
     let mut count = Key::new(0, 0);
 
-    let mut last_pressed_key = Key::new(-1, -1);
-
     loop {
         if Instant::now() >= matrix.enter_sleep_delay {
             matrix.enter_sleep_mode();
@@ -154,10 +152,10 @@ pub async fn scan_grid(
 
                 /* check if a col is high */
                 for col in matrix.cols.iter() {
-                    /* lock the hashmap */
-                    if let Some(mut keys_pressed) = keys_pressed.try_lock() {
-                        /* if a col is high */
-                        if col.is_high() {
+                    /* check if a col is set to high (key pressed) */
+                    if col.is_high() {
+                        /* lock the hashmap */
+                        if let Some(mut keys_pressed) = keys_pressed.try_lock() {
                             /* Inserts a key-value pair into the map.
                              * If an equivalent key already exists in the map: the key remains and retains in its place in the order, its corresponding value is updated with value and the older value is returned inside Some(_).
                              * If no equivalent key existed in the map: the new key-value pair is inserted, last in order, and None is returned.
@@ -179,21 +177,9 @@ pub async fn scan_grid(
 
                             /* reset sleep delay if a key is pressed */
                             matrix.sleep_delay_key_pressed = true;
-
-                            /* in case the last pressed key is different than the current pressed key */
-                            if last_pressed_key != count {
-                                /* get the last pressed key's value and set the state to released */
-                                if let Some(last_stored_value) =
-                                    keys_pressed.get_mut(&last_pressed_key)
-                                {
-                                    last_stored_value.key_state = KEY_RELEASED;
-                                }
-
-                                /* store the pressed key as the last pressed key */
-                                last_pressed_key = count;
-                            }
                         }
                     }
+
                     /* increment col */
                     count.col += 1;
                 }
