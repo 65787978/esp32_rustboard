@@ -5,7 +5,7 @@ use crate::matrix::Key;
 /* USER CONFIGURABLE PARAMETERS */
 pub const ROWS: usize = 4;
 pub const COLS: usize = 6;
-pub const DEBOUNCE_DELAY: Duration = Duration::from_millis(80);
+pub const DEBOUNCE_DELAY: Duration = Duration::from_millis(100);
 pub const DEBOUNCE_DELAY_LAYER_KEY: Duration = Duration::from_millis(300);
 pub const SLEEP_DELAY: Duration = Duration::from_millis(600000);
 pub const SLEEP_DELAY_INIT: Duration = Duration::from_millis(600000);
