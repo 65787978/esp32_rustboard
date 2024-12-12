@@ -231,8 +231,6 @@ pub async fn ble_send_keys(
                                         Some(modifier) => {
                                             ble_keyboard.key_report.modifiers |= modifier;
 
-                                            ble_keyboard.send_report();
-
                                             log::info!(
                                                 "Modifier added: {}",
                                                 ble_keyboard.key_report.modifiers
@@ -256,9 +254,6 @@ pub async fn ble_send_keys(
                                                         "Key_count added: {}",
                                                         ble_keyboard.key_count
                                                     );
-
-                                                    /* send the report with the new key */
-                                                    ble_keyboard.send_report();
                                                 } else {
                                                     break;
                                                 }
@@ -267,7 +262,6 @@ pub async fn ble_send_keys(
                                     }
                                 }
                             }
-
                             /* check if the key is calculated for debounce */
                             KEY_RELEASED => {
                                 /* get the mapped key from the hashmap */
@@ -276,8 +270,6 @@ pub async fn ble_send_keys(
                                         Some(modifier) => {
                                             /* if the key is modifier, remove it from the key report */
                                             ble_keyboard.key_report.modifiers &= !modifier;
-
-                                            ble_keyboard.send_report();
 
                                             log::info!(
                                                 "Modifier removed: {}",
@@ -305,9 +297,6 @@ pub async fn ble_send_keys(
                                                         );
                                                     }
                                                 }
-
-                                                /* send the new report without the key */
-                                                ble_keyboard.send_report();
                                             }
                                         }
                                     }
@@ -320,6 +309,9 @@ pub async fn ble_send_keys(
                             _ => { /* do nothing */ }
                         }
                     }
+
+                    /* sent the new report */
+                    ble_keyboard.send_report();
 
                     /* remove the sent keys */
                     for key in pressed_keys_to_remove.iter() {

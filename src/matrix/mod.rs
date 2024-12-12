@@ -17,6 +17,11 @@ pub struct Key {
     pub col: i8,
 }
 
+impl Key {
+    fn new(row: i8, col: i8) -> Key {
+        Key { row, col }
+    }
+}
 pub struct PinMatrix<'a> {
     pub rows: [PinDriver<'a, AnyOutputPin, Output>; ROWS],
     pub cols: [PinDriver<'a, AnyIOPin, Input>; COLS],
@@ -131,8 +136,7 @@ pub async fn scan_grid(
     matrix.set_cols_interrupt();
 
     /* initialize counts */
-    let mut row_count: i8 = 0;
-    let mut col_count: i8 = 0;
+    let mut count = Key::new(0, 0);
 
     loop {
         if Instant::now() >= matrix.enter_sleep_delay {
@@ -148,7 +152,7 @@ pub async fn scan_grid(
 
                 /* check if a col is high */
                 for col in matrix.cols.iter() {
-                    /* if a col is high */
+                    /* check if a col is set to high (key pressed) */
                     if col.is_high() {
                         /* lock the hashmap */
                         if let Some(mut keys_pressed) = keys_pressed.try_lock() {
@@ -159,8 +163,8 @@ pub async fn scan_grid(
                             keys_pressed
                                 .insert(
                                     Key {
-                                        row: row_count,
-                                        col: col_count,
+                                        row: count.row,
+                                        col: count.col,
                                     },
                                     Debounce {
                                         key_pressed_time: Instant::now(),
@@ -169,26 +173,28 @@ pub async fn scan_grid(
                                 )
                                 .expect("Error setting new key in the hashmap");
 
-                            log::info!("Pressed keys stored! X:{}, Y:{}", row_count, col_count);
-                        }
+                            log::info!("Pressed keys stored! X:{}, Y:{}", count.row, count.col);
 
-                        /* reset sleep delay if a key is pressed */
-                        matrix.sleep_delay_key_pressed = true;
+                            /* reset sleep delay if a key is pressed */
+                            matrix.sleep_delay_key_pressed = true;
+                        }
                     }
+
                     /* increment col */
-                    col_count += 1;
+                    count.col += 1;
                 }
                 /* set row to low */
                 row.set_low().unwrap();
 
                 /* increment row */
-                row_count += 1;
+                count.row += 1;
 
                 /* reset col count */
-                col_count = 0;
+                count.col = 0;
             }
+
             /* reset row count */
-            row_count = 0;
+            count.row = 0;
 
             /* if a key has been pressed */
             if matrix.sleep_delay_key_pressed {
