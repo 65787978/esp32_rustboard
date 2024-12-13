@@ -206,14 +206,14 @@ pub async fn ble_send_keys(
     /* load the specified layout */
     layers.load_layout();
 
+    /* vec to store the keys needed to be removed */
+    let mut pressed_keys_to_remove = Vec::new();
+
     /* Run the main loop */
     loop {
         if ble_keyboard.connected() {
             /* try to lock the hashmap */
             if let Some(mut keys_pressed) = keys_pressed.try_lock() {
-                /* store the keys that need to be removed */
-                let mut pressed_keys_to_remove = Vec::new();
-
                 /* check if there are pressed keys */
                 if !keys_pressed.is_empty() {
                     /* iter trough the pressed keys */
@@ -313,9 +313,9 @@ pub async fn ble_send_keys(
                     /* sent the new report */
                     ble_keyboard.send_report();
 
-                    /* remove the sent keys */
-                    for key in pressed_keys_to_remove.iter() {
-                        keys_pressed.remove(key).unwrap();
+                    /* remove the sent keys and empty the vec */
+                    while let Some(key) = pressed_keys_to_remove.pop() {
+                        keys_pressed.remove(&key).unwrap();
                     }
                 }
             }
