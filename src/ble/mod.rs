@@ -229,6 +229,7 @@ pub async fn ble_send_keys(
                                     /* check and set the modifier */
                                     match layers.check_modifier(valid_key) {
                                         Some(modifier) => {
+                                            /* add the modifier key to the modifiers */
                                             ble_keyboard.key_report.modifiers |= modifier;
 
                                             log::info!(
@@ -268,7 +269,7 @@ pub async fn ble_send_keys(
                                 if let Some(valid_key) = layers.get(&key.row, &key.col) {
                                     match layers.check_modifier(valid_key) {
                                         Some(modifier) => {
-                                            /* if the key is modifier, remove it from the key report */
+                                            /* if the key is modifier, remove it from the modifiers */
                                             ble_keyboard.key_report.modifiers &= !modifier;
 
                                             log::info!(
