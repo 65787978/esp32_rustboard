@@ -221,8 +221,6 @@ pub async fn ble_send_keys(
                         /*check the key debounce state */
                         match debounce.key_state {
                             KEY_PRESSED => {
-                                /* check and set the layer */
-                                layers.set_layer(&key, debounce);
                                 /* do not store the layer key in the report */
                                 if *key != LAYER_KEY {
                                     /* get the pressed key */
@@ -260,6 +258,9 @@ pub async fn ble_send_keys(
                                             }
                                         }
                                     }
+                                } else {
+                                    /* check and set the layer */
+                                    layers.set_layer(&key, debounce);
                                 }
                             }
                             /* check if the key is calculated for debounce */
