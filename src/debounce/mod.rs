@@ -1,6 +1,6 @@
 use crate::{
     config::config::{DEBOUNCE_DELAY, PRESSED_KEYS_INDEXMAP_SIZE},
-    delay::delay_us,
+    delay::delay_ms,
     matrix::Key,
 };
 use embassy_time::Instant;
@@ -26,10 +26,12 @@ pub async fn calculate_debounce(
             for (_key, debounce) in keys_pressed.iter_mut() {
                 /* check if the key has passed the debounce delay or has been released */
                 if Instant::now() >= debounce.key_pressed_time + DEBOUNCE_DELAY {
+                    /* set the key_state to RELEASED */
                     debounce.key_state = KEY_RELEASED;
                 }
             }
         }
-        delay_us(10).await;
+        /* there must be a delay so WDT is not triggered */
+        delay_ms(1).await;
     }
 }
