@@ -12,7 +12,7 @@ pub mod delay {
     }
 
     pub async fn delay_us(delay: u64) {
-        let duration = Duration::from_millis(delay);
+        let duration = Duration::from_micros(delay);
         Timer::after(duration).await;
     }
 }
