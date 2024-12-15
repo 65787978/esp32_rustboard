@@ -180,7 +180,7 @@ impl BleKeyboard {
             .lock()
             .set_from(&self.key_report)
             .notify();
-        esp_idf_svc::hal::delay::Ets::delay_ms(5);
+        esp_idf_svc::hal::delay::Ets::delay_ms(1);
     }
 
     fn set_ble_power_save(&mut self) {
@@ -223,40 +223,39 @@ pub async fn ble_send_keys(
                             KEY_PRESSED => {
                                 /* check and set the layer */
                                 layers.set_layer(&key, debounce);
-
-                                /* get the pressed key */
-                                if let Some(valid_key) = layers.get(&key.row, &key.col) {
-                                    /* check and set the modifier */
-                                    match layers.check_modifier(valid_key) {
-                                        Some(modifier) => {
-                                            /* add the modifier key to the modifiers */
-                                            ble_keyboard.key_report.modifiers |= modifier;
-
-                                            log::info!(
-                                                "Modifier added: {}",
-                                                ble_keyboard.key_report.modifiers
-                                            );
-                                        }
-                                        None => {
-                                            /* do not store the layer key in the report */
-                                            if *key != LAYER_KEY {
+                                /* do not store the layer key in the report */
+                                if *key != LAYER_KEY {
+                                    /* get the pressed key */
+                                    if let Some(valid_key) = layers.get(&key.row, &key.col) {
+                                        /* check and set the modifier */
+                                        match layers.check_modifier(valid_key) {
+                                            Some(modifier) => {
+                                                /* add the modifier key to the modifiers */
+                                                ble_keyboard.key_report.modifiers |= modifier;
+                                            }
+                                            None => {
                                                 /* check if the key count is less than 6 */
-                                                if ble_keyboard.key_count < 6 {
-                                                    /* set the key to the buffer */
-                                                    ble_keyboard.key_report.keys
-                                                        [ble_keyboard.key_count] = *valid_key as u8;
-
-                                                    log::info!("KEY: {}", *valid_key as u8);
-
-                                                    /* increment the key count */
-                                                    ble_keyboard.key_count += 1;
-
-                                                    log::info!(
-                                                        "Key_count added: {}",
-                                                        ble_keyboard.key_count
-                                                    );
-                                                } else {
-                                                    break;
+                                                if !ble_keyboard
+                                                    .key_report
+                                                    .keys
+                                                    .contains(&(*valid_key as u8))
+                                                {
+                                                    /* find the first key slot in the array that is
+                                                     * free */
+                                                    match ble_keyboard
+                                                        .key_report
+                                                        .keys
+                                                        .iter()
+                                                        .position(|&value| value == 0)
+                                                    {
+                                                        Some(index) => {
+                                                            /* add the new key to that position */
+                                                            ble_keyboard.key_report.keys[index] =
+                                                                *valid_key as u8
+                                                        }
+                                                        None => { /* there is no free key slot available */
+                                                        }
+                                                    }
                                                 }
                                             }
                                         }
@@ -271,38 +270,24 @@ pub async fn ble_send_keys(
                                         Some(modifier) => {
                                             /* if the key is modifier, remove it from the modifiers */
                                             ble_keyboard.key_report.modifiers &= !modifier;
-
-                                            log::info!(
-                                                "Modifier removed: {}",
-                                                ble_keyboard.key_report.modifiers
-                                            );
                                         }
                                         None => {
-                                            let valid_key = *valid_key as u8;
-                                            /*check if the key is contained in the report */
-                                            if ble_keyboard.key_report.keys.contains(&valid_key) {
-                                                /* go over the keys in the report */
-                                                for key_in_report in
-                                                    ble_keyboard.key_report.keys.iter_mut()
-                                                {
-                                                    if *key_in_report == valid_key {
-                                                        /* remove the key from the report */
-                                                        *key_in_report = 0;
-
-                                                        /*decrement the count as the key is removed from the report */
-                                                        ble_keyboard.key_count -= 1;
-
-                                                        log::info!(
-                                                            "Key_count removed: {}",
-                                                            ble_keyboard.key_count
-                                                        );
-                                                    }
+                                            /* find the key slot of the released key */
+                                            match ble_keyboard
+                                                .key_report
+                                                .keys
+                                                .iter()
+                                                .position(|&value| value == *valid_key as u8)
+                                            {
+                                                Some(index) => {
+                                                    /* remove the key from the key slot */
+                                                    ble_keyboard.key_report.keys[index] = 0
                                                 }
+                                                None => { /* do nothing */ }
                                             }
                                         }
                                     }
                                 }
-
                                 /* if key has been debounced, add it to be removed */
                                 pressed_keys_to_remove.push(*key);
                             }
@@ -310,6 +295,12 @@ pub async fn ble_send_keys(
                             _ => { /* do nothing */ }
                         }
                     }
+
+                    /* debug log */
+                    log::info!(
+                        "ble_keyboard.key_report.keys: {:?}",
+                        ble_keyboard.key_report.keys
+                    );
 
                     /* sent the new report */
                     ble_keyboard.send_report();
@@ -320,9 +311,10 @@ pub async fn ble_send_keys(
                     }
                 }
             }
-
-            delay_us(10).await;
+            /* there must be a delay so the WDT in not triggered */
+            delay_ms(1).await;
         } else {
+            /* debug log */
             log::info!("Keyboard not connected!");
 
             /* sleep for 100ms */
