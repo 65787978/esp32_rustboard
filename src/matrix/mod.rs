@@ -148,7 +148,7 @@ pub async fn scan_grid(
                 row.set_high().unwrap();
 
                 /* delay so pin can propagate */
-                delay_us(10).await;
+                delay_us(100).await;
 
                 /* check if a col is high */
                 for col in matrix.cols.iter() {
