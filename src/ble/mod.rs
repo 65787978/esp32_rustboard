@@ -258,7 +258,10 @@ pub async fn ble_send_keys(
                                             }
                                         }
                                     }
-                                } else {
+                                    /* only change the layer in case the key_report is empty and there are no modifiers pressed */
+                                } else if ble_keyboard.key_report.keys.is_empty()
+                                    & (ble_keyboard.key_report.modifiers == 0)
+                                {
                                     /* check and set the layer */
                                     layers.set_layer(&key, debounce);
                                 }
