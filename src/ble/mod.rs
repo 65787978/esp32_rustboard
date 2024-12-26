@@ -13,7 +13,8 @@ use esp32_nimble::{
     BLEHIDDevice, BLEServer,
 };
 use esp_idf_sys::{
-    esp_ble_power_type_t_ESP_BLE_PWR_TYPE_CONN_HDL0, esp_power_level_t_ESP_PWR_LVL_N24,
+    esp_ble_power_type_t_ESP_BLE_PWR_TYPE_ADV, esp_ble_power_type_t_ESP_BLE_PWR_TYPE_DEFAULT,
+    esp_ble_power_type_t_ESP_BLE_PWR_TYPE_SCAN,
 };
 use heapless::FnvIndexMap;
 use spin::Mutex as spinMutex;
@@ -187,8 +188,16 @@ impl BleKeyboard {
         /* set power save */
         unsafe {
             esp_idf_sys::esp_ble_tx_power_set(
-                esp_ble_power_type_t_ESP_BLE_PWR_TYPE_CONN_HDL0,
-                esp_power_level_t_ESP_PWR_LVL_N24,
+                esp_ble_power_type_t_ESP_BLE_PWR_TYPE_DEFAULT,
+                ESP_POWER_LEVEL.convert(),
+            );
+            esp_idf_sys::esp_ble_tx_power_set(
+                esp_ble_power_type_t_ESP_BLE_PWR_TYPE_ADV,
+                ESP_POWER_LEVEL.convert(),
+            );
+            esp_idf_sys::esp_ble_tx_power_set(
+                esp_ble_power_type_t_ESP_BLE_PWR_TYPE_SCAN,
+                ESP_POWER_LEVEL.convert(),
             );
         }
     }
@@ -209,9 +218,19 @@ pub async fn ble_send_keys(
     /* vec to store the keys needed to be removed */
     let mut pressed_keys_to_remove = Vec::new();
 
+    let mut power_save_flag: bool = true;
+
     /* Run the main loop */
     loop {
         if ble_keyboard.connected() {
+            /* check if power save has been set */
+            if power_save_flag {
+                /* set ble power to lowest possible */
+                ble_keyboard.set_ble_power_save();
+                /* set flag to false */
+                power_save_flag = false;
+            }
+
             /* try to lock the hashmap */
             if let Some(mut keys_pressed) = keys_pressed.try_lock() {
                 /* check if there are pressed keys */
@@ -258,7 +277,8 @@ pub async fn ble_send_keys(
                                             }
                                         }
                                     }
-                                } else {
+                                    /* only change the layer in case the key_report is empty */
+                                } else if Some(&0) == ble_keyboard.key_report.keys.iter().max() {
                                     /* check and set the layer */
                                     layers.set_layer(&key, debounce);
                                 }
@@ -317,6 +337,12 @@ pub async fn ble_send_keys(
         } else {
             /* debug log */
             log::info!("Keyboard not connected!");
+
+            /* check the power save flag */
+            if !power_save_flag {
+                /* if false, set to true */
+                power_save_flag = true;
+            }
 
             /* sleep for 100ms */
             delay_ms(100).await;
