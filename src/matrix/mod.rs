@@ -122,6 +122,9 @@ impl PinMatrix<'_> {
 
             /* reset sleep delay */
             self.reset_sleep_delay();
+
+            /* restart the cpu, so we have faster ble connection after sleep */
+            esp_idf_sys::esp_restart();
         }
     }
 }
@@ -148,7 +151,7 @@ pub async fn scan_grid(
                 row.set_high().unwrap();
 
                 /* delay so pin can propagate */
-                delay_us(100).await;
+                delay_us(50).await;
 
                 /* check if a col is high */
                 for col in matrix.cols.iter() {
@@ -179,7 +182,6 @@ pub async fn scan_grid(
                             matrix.sleep_delay_key_pressed = true;
                         }
                     }
-
                     /* increment col */
                     count.col += 1;
                 }
