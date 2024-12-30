@@ -82,14 +82,7 @@ impl PinMatrix<'_> {
         self.enter_sleep_delay = Instant::now() + SLEEP_DELAY;
     }
 
-    fn enter_sleep_mode(&mut self) {
-        /* enable interrupts */
-        self.set_enable_interrupts();
-
-        /* set the home row to high */
-        self.rows[1].set_high().unwrap();
-
-        /* enter sleep mode */
+    fn set_gpio_wakeup_enable(&mut self) {
         unsafe {
             /* set gpios that can wake up the chip */
             esp_idf_sys::gpio_wakeup_enable(
@@ -108,7 +101,21 @@ impl PinMatrix<'_> {
                 gpio_num_t_GPIO_NUM_6,
                 gpio_int_type_t_GPIO_INTR_HIGH_LEVEL,
             );
+        }
+    }
 
+    fn enter_sleep_mode(&mut self) {
+        /* enable interrupts */
+        self.set_enable_interrupts();
+
+        /* set the home row to high */
+        self.rows[1].set_high().unwrap();
+
+        /* set gpio wakeup enable interrup */
+        self.set_gpio_wakeup_enable();
+
+        /* enter sleep mode */
+        unsafe {
             esp_idf_sys::esp_sleep_enable_gpio_switch(false);
 
             esp_idf_sys::esp_sleep_enable_gpio_wakeup();
@@ -151,7 +158,7 @@ pub async fn scan_grid(
                 row.set_high().unwrap();
 
                 /* delay so pin can propagate */
-                delay_us(50).await;
+                delay_us(100).await;
 
                 /* check if a col is high */
                 for col in matrix.cols.iter() {
