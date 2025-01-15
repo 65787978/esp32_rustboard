@@ -18,6 +18,7 @@ use esp_idf_sys::{
 };
 use heapless::FnvIndexMap;
 use spin::Mutex as spinMutex;
+use zerocopy::{Immutable, IntoBytes};
 
 const KEYBOARD_ID: u8 = 0x01;
 const MEDIA_KEYS_ID: u8 = 0x02;
@@ -87,7 +88,8 @@ const HID_REPORT_DISCRIPTOR: &[u8] = hid!(
                        // (END_COLLECTION), // END_COLLECTION
 );
 
-#[repr(packed)]
+#[derive(IntoBytes, Immutable)]
+#[repr(packed, C)]
 struct KeyReport {
     modifiers: u8,
     reserved: u8,
@@ -179,7 +181,7 @@ impl BleKeyboard {
     fn send_report(&mut self) {
         self.input_keyboard
             .lock()
-            .set_from(&self.key_report)
+            .set_value(&self.key_report.as_bytes()) // .set_from(&self.key_report)
             .notify();
         esp_idf_svc::hal::delay::Ets::delay_ms(1);
     }
