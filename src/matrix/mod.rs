@@ -136,6 +136,39 @@ impl PinMatrix<'_> {
     }
 }
 
+fn store_key(
+    keys_pressed: &Mutex<FnvIndexMap<Key, Debounce, PRESSED_KEYS_INDEXMAP_SIZE>>,
+    key: &Key,
+) -> bool {
+    /* lock the hashmap */
+    if let Some(mut keys_pressed) = keys_pressed.try_lock() {
+        /* Inserts a key-value pair into the map.
+         * If an equivalent key already exists in the map: the key remains and retains in its place in the order, its corresponding value is updated with value and the older value is returned inside Some(_).
+         * If no equivalent key existed in the map: the new key-value pair is inserted, last in order, and None is returned.
+         */
+        keys_pressed
+            .insert(
+                Key {
+                    row: key.row,
+                    col: key.col,
+                },
+                Debounce {
+                    key_pressed_time: Instant::now(),
+                    key_state: KEY_PRESSED,
+                },
+            )
+            .expect("Error setting new key in the hashmap");
+
+        log::info!("Pressed keys stored! X:{}, Y:{}", key.row, key.col);
+
+        /* return true to reset the sleep delay */
+        true
+    } else {
+        /* else return false */
+        false
+    }
+}
+
 pub async fn scan_grid(
     keys_pressed: &Mutex<FnvIndexMap<Key, Debounce, PRESSED_KEYS_INDEXMAP_SIZE>>,
 ) -> ! {
@@ -164,30 +197,8 @@ pub async fn scan_grid(
                 for col in matrix.cols.iter() {
                     /* check if a col is set to high (key pressed) */
                     if col.is_high() {
-                        /* lock the hashmap */
-                        if let Some(mut keys_pressed) = keys_pressed.try_lock() {
-                            /* Inserts a key-value pair into the map.
-                             * If an equivalent key already exists in the map: the key remains and retains in its place in the order, its corresponding value is updated with value and the older value is returned inside Some(_).
-                             * If no equivalent key existed in the map: the new key-value pair is inserted, last in order, and None is returned.
-                             */
-                            keys_pressed
-                                .insert(
-                                    Key {
-                                        row: count.row,
-                                        col: count.col,
-                                    },
-                                    Debounce {
-                                        key_pressed_time: Instant::now(),
-                                        key_state: KEY_PRESSED,
-                                    },
-                                )
-                                .expect("Error setting new key in the hashmap");
-
-                            log::info!("Pressed keys stored! X:{}, Y:{}", count.row, count.col);
-
-                            /* reset sleep delay if a key is pressed */
-                            matrix.sleep_delay_key_pressed = true;
-                        }
+                        /* store the key */
+                        matrix.sleep_delay_key_pressed = store_key(keys_pressed, &count);
                     }
                     /* increment col */
                     count.col += 1;
