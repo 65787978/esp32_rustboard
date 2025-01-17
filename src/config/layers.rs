@@ -61,17 +61,33 @@ impl Layers {
         }
     }
 
-    pub fn check_modifier(&self, key: &HidKeys) -> Option<u8> {
+    pub fn set_modifier(&self, key: &HidKeys) -> u8 {
         /* map the key to a modifier */
         let hid_modifier = HidModifiers::from(*key);
 
         /* set the modifier */
         match hid_modifier {
-            HidModifiers::Shift => Some(HidModifiers::Shift as u8),
-            HidModifiers::Control => Some(HidModifiers::Control as u8),
-            HidModifiers::Alt => Some(HidModifiers::Alt as u8),
-            HidModifiers::Super => Some(HidModifiers::Super as u8),
-            _ => None,
+            HidModifiers::Shift => HidModifiers::Shift as u8,
+            HidModifiers::Control => HidModifiers::Control as u8,
+            HidModifiers::Alt => HidModifiers::Alt as u8,
+            HidModifiers::Super => HidModifiers::Super as u8,
+            _ => 0,
+        }
+    }
+
+    pub fn check_type(&self, key: &HidKeys) -> KeyType {
+        match *key {
+            HidKeys::MacroOpenedBracket
+            | HidKeys::MacroClosedBracket
+            | HidKeys::MacroCopy
+            | HidKeys::MacroPaste => KeyType::Macro,
+
+            HidKeys::ModifierShift
+            | HidKeys::ModifierControl
+            | HidKeys::ModifierAlt
+            | HidKeys::ModifierSuper => KeyType::Modifier,
+
+            _ => KeyType::Key,
         }
     }
 }
