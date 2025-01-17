@@ -18,11 +18,11 @@ pub const ROWS: usize = 4;
 pub const COLS: usize = 6;
 pub const DEBOUNCE_DELAY: Duration = Duration::from_millis(50);
 pub const DEBOUNCE_DELAY_LAYER_KEY: Duration = Duration::from_millis(300);
-pub const SLEEP_DELAY: Duration = Duration::from_millis(100000);
+pub const SLEEP_DELAY: Duration = Duration::from_millis(300000);
 pub const SLEEP_DELAY_INIT: Duration = Duration::from_millis(60000);
 pub const PRESSED_KEYS_INDEXMAP_SIZE: usize = 16;
 pub const LAYER_INDEXMAP_SIZE: usize = 32;
-pub const ESP_POWER_LEVEL: EspPowerLevel = EspPowerLevel::Positive3;
+pub const ESP_POWER_LEVEL: EspPowerLevel = EspPowerLevel::Negative0;
 
 #[cfg(feature = "left-side")]
 pub const LAYER_KEY: Key = Key { row: 3, col: 3 };

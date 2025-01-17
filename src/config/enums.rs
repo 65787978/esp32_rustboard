@@ -1,5 +1,7 @@
 /* Scan codes - HID Keyboard: https://gist.github.com/MightyPork/6da26e382a7ad91b5496ee55fdc73db2 */
 
+use heapless::Vec;
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum HidKeys {
     None = 0x00,
@@ -167,10 +169,22 @@ pub enum HidKeys {
     Exsel = 0xA4,
 
     /* dummy modifiers */
-    Shift = 0xB1,
-    Control = 0xB2,
-    Alt = 0xB3,
-    Super = 0xB4,
+    ModifierShift = 0xB1,
+    ModifierControl = 0xB2,
+    ModifierAlt = 0xB3,
+    ModifierSuper = 0xB4,
+
+    /* dummy macros */
+    MacroOpenedBracket = 0xC1,
+    MacroClosedBracket = 0xC2,
+    MacroCopy = 0xC3,
+    MacroPaste = 0xC4,
+}
+
+pub enum KeyType {
+    Macro,
+    Modifier,
+    Key,
 }
 
 pub enum HidModifiers {
@@ -184,11 +198,42 @@ pub enum HidModifiers {
 impl From<HidKeys> for HidModifiers {
     fn from(key: HidKeys) -> Self {
         match key {
-            HidKeys::Shift => Self::Shift,
-            HidKeys::Control => Self::Control,
-            HidKeys::Alt => Self::Alt,
-            HidKeys::Super => Self::Super,
+            HidKeys::ModifierShift => Self::Shift,
+            HidKeys::ModifierControl => Self::Control,
+            HidKeys::ModifierAlt => Self::Alt,
+            HidKeys::ModifierSuper => Self::Super,
             _ => Self::None,
+        }
+    }
+}
+
+impl HidKeys {
+    pub fn get_macro_sequence(key: &HidKeys) -> Vec<HidKeys, 16> {
+        let mut vec: Vec<HidKeys, 16> = Vec::new();
+
+        match key {
+            HidKeys::MacroOpenedBracket => {
+                vec.push(HidKeys::ModifierShift).unwrap();
+                vec.push(HidKeys::Num9).unwrap();
+                vec
+            }
+            HidKeys::MacroClosedBracket => {
+                vec.push(HidKeys::ModifierShift).unwrap();
+                vec.push(HidKeys::Num0).unwrap();
+                vec
+            }
+            HidKeys::MacroCopy => {
+                vec.push(HidKeys::ModifierControl).unwrap();
+                vec.push(HidKeys::C).unwrap();
+                vec
+            }
+
+            HidKeys::MacroPaste => {
+                vec.push(HidKeys::ModifierControl).unwrap();
+                vec.push(HidKeys::V).unwrap();
+                vec
+            }
+            _ => vec,
         }
     }
 }

@@ -82,14 +82,7 @@ impl PinMatrix<'_> {
         self.enter_sleep_delay = Instant::now() + SLEEP_DELAY;
     }
 
-    fn enter_sleep_mode(&mut self) {
-        /* enable interrupts */
-        self.set_enable_interrupts();
-
-        /* set the home row to high */
-        self.rows[1].set_high().unwrap();
-
-        /* enter sleep mode */
+    fn set_gpio_wakeup_enable(&mut self) {
         unsafe {
             /* set gpios that can wake up the chip */
             esp_idf_sys::gpio_wakeup_enable(
@@ -108,7 +101,21 @@ impl PinMatrix<'_> {
                 gpio_num_t_GPIO_NUM_6,
                 gpio_int_type_t_GPIO_INTR_HIGH_LEVEL,
             );
+        }
+    }
 
+    fn enter_sleep_mode(&mut self) {
+        /* enable interrupts */
+        self.set_enable_interrupts();
+
+        /* set the home row to high */
+        self.rows[1].set_high().unwrap();
+
+        /* set gpio wakeup enable interrup */
+        self.set_gpio_wakeup_enable();
+
+        /* enter sleep mode */
+        unsafe {
             esp_idf_sys::esp_sleep_enable_gpio_switch(false);
 
             esp_idf_sys::esp_sleep_enable_gpio_wakeup();
@@ -126,6 +133,39 @@ impl PinMatrix<'_> {
             /* restart the cpu, so we have faster ble connection after sleep */
             esp_idf_sys::esp_restart();
         }
+    }
+}
+
+fn store_key(
+    keys_pressed: &Mutex<FnvIndexMap<Key, Debounce, PRESSED_KEYS_INDEXMAP_SIZE>>,
+    key: &Key,
+) -> bool {
+    /* lock the hashmap */
+    if let Some(mut keys_pressed) = keys_pressed.try_lock() {
+        /* Inserts a key-value pair into the map.
+         * If an equivalent key already exists in the map: the key remains and retains in its place in the order, its corresponding value is updated with value and the older value is returned inside Some(_).
+         * If no equivalent key existed in the map: the new key-value pair is inserted, last in order, and None is returned.
+         */
+        keys_pressed
+            .insert(
+                Key {
+                    row: key.row,
+                    col: key.col,
+                },
+                Debounce {
+                    key_pressed_time: Instant::now(),
+                    key_state: KEY_PRESSED,
+                },
+            )
+            .expect("Error setting new key in the hashmap");
+
+        log::info!("Pressed keys stored! X:{}, Y:{}", key.row, key.col);
+
+        /* return true to reset the sleep delay */
+        true
+    } else {
+        /* else return false */
+        false
     }
 }
 
@@ -151,36 +191,14 @@ pub async fn scan_grid(
                 row.set_high().unwrap();
 
                 /* delay so pin can propagate */
-                delay_us(50).await;
+                delay_us(100).await;
 
                 /* check if a col is high */
                 for col in matrix.cols.iter() {
                     /* check if a col is set to high (key pressed) */
                     if col.is_high() {
-                        /* lock the hashmap */
-                        if let Some(mut keys_pressed) = keys_pressed.try_lock() {
-                            /* Inserts a key-value pair into the map.
-                             * If an equivalent key already exists in the map: the key remains and retains in its place in the order, its corresponding value is updated with value and the older value is returned inside Some(_).
-                             * If no equivalent key existed in the map: the new key-value pair is inserted, last in order, and None is returned.
-                             */
-                            keys_pressed
-                                .insert(
-                                    Key {
-                                        row: count.row,
-                                        col: count.col,
-                                    },
-                                    Debounce {
-                                        key_pressed_time: Instant::now(),
-                                        key_state: KEY_PRESSED,
-                                    },
-                                )
-                                .expect("Error setting new key in the hashmap");
-
-                            log::info!("Pressed keys stored! X:{}, Y:{}", count.row, count.col);
-
-                            /* reset sleep delay if a key is pressed */
-                            matrix.sleep_delay_key_pressed = true;
-                        }
+                        /* store the key */
+                        matrix.sleep_delay_key_pressed = store_key(keys_pressed, &count);
                     }
                     /* increment col */
                     count.col += 1;
