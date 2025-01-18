@@ -2,7 +2,7 @@
 #![allow(dead_code)]
 extern crate alloc;
 
-use crate::config::enums::{HidKeys, KeyType};
+use crate::config::enums::{HidKeys, HidModifiers, KeyType};
 use crate::config::{config::*, layers::*};
 use crate::debounce::{Debounce, KEY_PRESSED, KEY_RELEASED};
 use crate::delay::*;
@@ -218,6 +218,9 @@ pub async fn ble_send_keys(
     /* load the specified layout */
     layers.load_layout();
 
+    /* layer state */
+    let mut layer_state = Layer::Base;
+
     /* vec to store the keys needed to be removed */
     let mut pressed_keys_to_remove: Vec<Key, 6> = Vec::new();
 
@@ -244,23 +247,20 @@ pub async fn ble_send_keys(
                         /*check the key debounce state */
                         match debounce.key_state {
                             KEY_PRESSED => {
-                                /* do not store the layer key in the report */
-                                if *key != LAYER_KEY {
-                                    /* get the pressed key */
-                                    if let Some(valid_key) = layers.get(&key.row, &key.col) {
-                                        send_keys(&layers, &mut ble_keyboard, valid_key);
-                                    }
-                                    /* only change the layer in case the key_report is empty */
-                                } else if Some(&0) == ble_keyboard.key_report.keys.iter().max() {
-                                    /* check and set the layer */
-                                    layers.set_layer(&key, debounce);
+                                /* get the pressed key */
+                                if let Some(valid_key) =
+                                    layers.get(&key.row, &key.col, &layer_state)
+                                {
+                                    send_keys(&mut ble_keyboard, valid_key, &mut layer_state);
                                 }
                             }
                             /* check if the key is calculated for debounce */
                             KEY_RELEASED => {
                                 /* get the mapped key from the hashmap */
-                                if let Some(valid_key) = layers.get(&key.row, &key.col) {
-                                    remove_keys(&layers, &mut ble_keyboard, valid_key);
+                                if let Some(valid_key) =
+                                    layers.get(&key.row, &key.col, &layer_state)
+                                {
+                                    remove_keys(&mut ble_keyboard, valid_key, &mut layer_state);
                                 }
                                 /* if key has been debounced, add it to be removed */
                                 pressed_keys_to_remove
@@ -305,17 +305,21 @@ pub async fn ble_send_keys(
     }
 }
 
-fn send_keys(layers: &Layers, ble_keyboard: &mut BleKeyboard, valid_key: &HidKeys) {
+fn send_keys(ble_keyboard: &mut BleKeyboard, valid_key: &HidKeys, layer_state: &mut Layer) {
     /* get the key type */
-    match layers.check_type(valid_key) {
+    match KeyType::check_type(valid_key) {
         KeyType::Macro => {
             let macro_valid_keys = HidKeys::get_macro_sequence(valid_key);
             for valid_key in macro_valid_keys.iter() {
-                send_keys(layers, ble_keyboard, valid_key);
+                send_keys(ble_keyboard, valid_key, layer_state);
             }
         }
+        KeyType::Layer => {
+            /* check and set the layer */
+            *layer_state = Layer::Upper;
+        }
         KeyType::Modifier => {
-            ble_keyboard.key_report.modifiers |= layers.set_modifier(valid_key);
+            ble_keyboard.key_report.modifiers |= HidModifiers::get_modifier(valid_key);
         }
         KeyType::Key => {
             /* check if the key count is less than 6 */
@@ -339,18 +343,22 @@ fn send_keys(layers: &Layers, ble_keyboard: &mut BleKeyboard, valid_key: &HidKey
     }
 }
 
-fn remove_keys(layers: &Layers, ble_keyboard: &mut BleKeyboard, valid_key: &HidKeys) {
+fn remove_keys(ble_keyboard: &mut BleKeyboard, valid_key: &HidKeys, layer_state: &mut Layer) {
     /* get the key type */
-    match layers.check_type(valid_key) {
+    match KeyType::check_type(valid_key) {
         KeyType::Macro => {
             let macro_valid_keys = HidKeys::get_macro_sequence(valid_key);
             for valid_key in macro_valid_keys.iter() {
-                remove_keys(layers, ble_keyboard, valid_key);
+                remove_keys(ble_keyboard, valid_key, layer_state);
             }
+        }
+        KeyType::Layer => {
+            /* check and set the layer */
+            *layer_state = Layer::Base;
         }
         KeyType::Modifier => {
             /* remove the modifier */
-            ble_keyboard.key_report.modifiers &= !layers.set_modifier(valid_key);
+            ble_keyboard.key_report.modifiers &= !HidModifiers::get_modifier(valid_key);
         }
         KeyType::Key => {
             /* find the key slot of the released key */
