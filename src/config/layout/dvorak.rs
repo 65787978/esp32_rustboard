@@ -12,9 +12,9 @@ X \ Y|  0  |  1  |  2  |  3  |  4  |  5  |           X \ Y|  0  |  1  |  2  |  3
 UPPER LAYER:
 
 X \ Y|  0  |  1  |  2  |  3  |  4  |  5  |           X \ Y|  0  |  1  |  2  |  3  |  4  |  5  |
-   0 |_ESC_|_SUP_|__7__|__8__|__9__|_CPY_|              0 |_____|__(__|__)__|_____|_____|_____|
-   1 |_BSP_|_ALT_|__4__|__5__|__6__|_DEL_|              1 |_____|_left|_down|__up_|_rght|_____|
-   2 |_CTL_|__0__|__1__|__2__|__3__|_PST_|              2 |__\__|__[__|__]__|_____|_____|_____|
+   0 |_ESC_|_SUP_|__7__|__8__|__9__|_CPY_|              0 |__!__|__@__|__#__|__$__|__%__|__^__|
+   1 |_BSP_|_ALT_|__4__|__5__|__6__|_DEL_|              1 |__&__|_left|_down|__up_|_rght|__*__|
+   2 |_CTL_|__0__|__1__|__2__|__3__|_PST_|              2 |__\__|__[__|__]__|__(__|__)__|_____|
    3                   |_LYR_|_SPC_|_SFT_|              3 |_TAB_|_ENT_|_LYR_|
 
 *********************************************************************************************
@@ -54,7 +54,7 @@ pub fn layout() -> Layers {
         layout.base.insert((3, 0), HidKeys::Undefined).unwrap(); //
         layout.base.insert((3, 1), HidKeys::Undefined).unwrap(); //
         layout.base.insert((3, 2), HidKeys::Undefined).unwrap(); //
-        layout.base.insert((3, 3), HidKeys::Undefined).unwrap(); // LAYER
+        layout.base.insert((3, 3), HidKeys::LayerKey).unwrap(); // LAYER
         layout.base.insert((3, 4), HidKeys::Space).unwrap(); // SPACE
         layout.base.insert((3, 5), HidKeys::ModifierShift).unwrap(); // SHIFT
 
@@ -65,6 +65,7 @@ pub fn layout() -> Layers {
         layout.upper.insert((0, 3), HidKeys::Num8).unwrap(); // 8
         layout.upper.insert((0, 4), HidKeys::Num9).unwrap(); // 9
         layout.upper.insert((0, 5), HidKeys::MacroCopy).unwrap(); // MACRO COPY
+
         layout.upper.insert((1, 0), HidKeys::Bspace).unwrap(); // BACKSPACE
         layout.upper.insert((1, 1), HidKeys::ModifierAlt).unwrap(); // ALT
         layout.upper.insert((1, 2), HidKeys::Num4).unwrap(); // 4
@@ -84,7 +85,7 @@ pub fn layout() -> Layers {
         layout.upper.insert((3, 0), HidKeys::Undefined).unwrap(); // Undefined
         layout.upper.insert((3, 1), HidKeys::Undefined).unwrap(); // Undefined
         layout.upper.insert((3, 2), HidKeys::Undefined).unwrap(); // Undefined
-        layout.upper.insert((3, 3), HidKeys::Undefined).unwrap(); // LAYER
+        layout.upper.insert((3, 3), HidKeys::LayerKey).unwrap(); // LAYER
         layout.upper.insert((3, 4), HidKeys::Space).unwrap(); // SPACE
         layout.upper.insert((3, 5), HidKeys::ModifierShift).unwrap(); // SHIFT
     }
@@ -115,42 +116,48 @@ pub fn layout() -> Layers {
 
         layout.base.insert((3, 0), HidKeys::Tab).unwrap(); // TAB
         layout.base.insert((3, 1), HidKeys::Enter).unwrap(); // ENTER
-        layout.base.insert((3, 2), HidKeys::Undefined).unwrap(); // LAYER
+        layout.base.insert((3, 2), HidKeys::LayerKey).unwrap(); // LAYER
         layout.base.insert((3, 3), HidKeys::Undefined).unwrap(); // Undefined
         layout.base.insert((3, 4), HidKeys::Undefined).unwrap(); // Undefined
         layout.base.insert((3, 5), HidKeys::Undefined).unwrap(); // Undefined
 
         /* UPPER LAYER LAYOUT */
-        layout.upper.insert((0, 0), HidKeys::Undefined).unwrap(); //
         layout
             .upper
-            .insert((0, 1), HidKeys::MacroOpenedBracket)
-            .unwrap(); // (
-        layout
-            .upper
-            .insert((0, 2), HidKeys::MacroClosedBracket)
-            .unwrap(); // )
-        layout.upper.insert((0, 3), HidKeys::Undefined).unwrap(); //
-        layout.upper.insert((0, 4), HidKeys::Undefined).unwrap(); //
-        layout.upper.insert((0, 5), HidKeys::Undefined).unwrap(); //
+            .insert((0, 0), HidKeys::MacroExclamationMark)
+            .unwrap(); // !
+        layout.upper.insert((0, 1), HidKeys::MacroAt).unwrap(); // @
+        layout.upper.insert((0, 2), HidKeys::MacroHash).unwrap(); // #
+        layout.upper.insert((0, 3), HidKeys::MacroDollar).unwrap(); // $
+        layout.upper.insert((0, 4), HidKeys::MacroModul).unwrap(); // %
+        layout.upper.insert((0, 5), HidKeys::MacroCaret).unwrap(); // ^
 
-        layout.upper.insert((1, 0), HidKeys::Undefined).unwrap(); // Undefined
+        layout
+            .upper
+            .insert((1, 0), HidKeys::MacroAmpersand)
+            .unwrap(); // &
         layout.upper.insert((1, 1), HidKeys::Left).unwrap(); // LEFT
         layout.upper.insert((1, 2), HidKeys::Down).unwrap(); // DOWN
         layout.upper.insert((1, 3), HidKeys::Up).unwrap(); // UP
         layout.upper.insert((1, 4), HidKeys::Right).unwrap(); // RIGHT
-        layout.upper.insert((1, 5), HidKeys::Undefined).unwrap(); // Undefined
+        layout.upper.insert((1, 5), HidKeys::MacroStar).unwrap(); // *
 
         layout.upper.insert((2, 0), HidKeys::Backslash).unwrap(); // \
         layout.upper.insert((2, 1), HidKeys::Lbracket).unwrap(); // [
         layout.upper.insert((2, 2), HidKeys::Rbracket).unwrap(); // ]
-        layout.upper.insert((2, 3), HidKeys::Undefined).unwrap(); // Undefined
-        layout.upper.insert((2, 4), HidKeys::Undefined).unwrap(); // Undefined
+        layout
+            .upper
+            .insert((2, 3), HidKeys::MacroOpenedBracket)
+            .unwrap(); // (
+        layout
+            .upper
+            .insert((2, 4), HidKeys::MacroClosedBracket)
+            .unwrap(); // )
         layout.upper.insert((2, 5), HidKeys::Undefined).unwrap(); // Undefined
 
         layout.upper.insert((3, 0), HidKeys::Tab).unwrap(); // TAB
         layout.upper.insert((3, 1), HidKeys::Enter).unwrap(); // ENTER
-        layout.upper.insert((3, 2), HidKeys::Undefined).unwrap(); // LAYER
+        layout.upper.insert((3, 2), HidKeys::LayerKey).unwrap(); // LAYER
         layout.upper.insert((3, 3), HidKeys::Undefined).unwrap(); // Undefined
         layout.upper.insert((3, 4), HidKeys::Undefined).unwrap(); // Undefined
         layout.upper.insert((3, 5), HidKeys::Undefined).unwrap(); // Undefined
