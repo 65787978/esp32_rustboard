@@ -11,8 +11,6 @@ use esp_idf_sys::{
     esp_power_level_t_ESP_PWR_LVL_P6, esp_power_level_t_ESP_PWR_LVL_P9,
 };
 
-use crate::matrix::Key;
-
 /* USER CONFIGURABLE PARAMETERS */
 pub const ROWS: usize = 4;
 pub const COLS: usize = 6;
@@ -22,13 +20,7 @@ pub const SLEEP_DELAY: Duration = Duration::from_millis(300000);
 pub const SLEEP_DELAY_INIT: Duration = Duration::from_millis(60000);
 pub const PRESSED_KEYS_INDEXMAP_SIZE: usize = 16;
 pub const LAYER_INDEXMAP_SIZE: usize = 32;
-pub const ESP_POWER_LEVEL: EspPowerLevel = EspPowerLevel::Negative0;
-
-#[cfg(feature = "left-side")]
-pub const LAYER_KEY: Key = Key { row: 3, col: 3 };
-
-#[cfg(feature = "right-side")]
-pub const LAYER_KEY: Key = Key { row: 3, col: 2 };
+pub const ESP_POWER_LEVEL: EspPowerLevel = EspPowerLevel::Positive9;
 
 pub enum EspPowerLevel {
     Negative24,
