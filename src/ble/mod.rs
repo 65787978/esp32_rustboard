@@ -317,6 +317,16 @@ fn send_keys(ble_keyboard: &mut BleKeyboard, valid_key: &HidKeys, layer_state: &
         KeyType::Layer => {
             /* check and set the layer */
             *layer_state = Layer::Upper;
+
+            /* release all keys */
+            ble_keyboard
+                .key_report
+                .keys
+                .iter_mut()
+                .for_each(|value| *value = 0);
+
+            /* release modifiers */
+            ble_keyboard.key_report.modifiers = 0;
         }
         KeyType::Modifier => {
             ble_keyboard.key_report.modifiers |= HidModifiers::get_modifier(valid_key);
@@ -355,6 +365,16 @@ fn remove_keys(ble_keyboard: &mut BleKeyboard, valid_key: &HidKeys, layer_state:
         KeyType::Layer => {
             /* check and set the layer */
             *layer_state = Layer::Base;
+
+            /* release all keys */
+            ble_keyboard
+                .key_report
+                .keys
+                .iter_mut()
+                .for_each(|value| *value = 0);
+
+            /* release modifiers */
+            ble_keyboard.key_report.modifiers = 0;
         }
         KeyType::Modifier => {
             /* remove the modifier */
