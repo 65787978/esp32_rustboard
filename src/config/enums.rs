@@ -168,6 +168,9 @@ pub enum HidKeys {
     Crsel = 0xA3,
     Exsel = 0xA4,
 
+    /* dummy layer */
+    LayerKey = 0xA5,
+
     /* dummy modifiers */
     ModifierShift = 0xB1,
     ModifierControl = 0xB2,
@@ -179,12 +182,49 @@ pub enum HidKeys {
     MacroClosedBracket = 0xC2,
     MacroCopy = 0xC3,
     MacroPaste = 0xC4,
+    MacroExclamationMark = 0xC5,
+    MacroAt = 0xC6,
+    MacroHash = 0xC7,
+    MacroDollar = 0xC8,
+    MacroModul = 0xC9,
+    MacroCaret = 0xD0,
+    MacroAmpersand = 0xD1,
+    MacroStar = 0xD2,
 }
 
 pub enum KeyType {
     Macro,
     Modifier,
     Key,
+    Layer,
+}
+
+impl KeyType {
+    pub fn check_type(key: &HidKeys) -> KeyType {
+        match *key {
+            HidKeys::MacroOpenedBracket
+            | HidKeys::MacroClosedBracket
+            | HidKeys::MacroCopy
+            | HidKeys::MacroPaste
+            | HidKeys::MacroExclamationMark
+            | HidKeys::MacroAt
+            | HidKeys::MacroHash
+            | HidKeys::MacroDollar
+            | HidKeys::MacroModul
+            | HidKeys::MacroCaret
+            | HidKeys::MacroAmpersand
+            | HidKeys::MacroStar => KeyType::Macro,
+
+            HidKeys::LayerKey => KeyType::Layer,
+
+            HidKeys::ModifierShift
+            | HidKeys::ModifierControl
+            | HidKeys::ModifierAlt
+            | HidKeys::ModifierSuper => KeyType::Modifier,
+
+            _ => KeyType::Key,
+        }
+    }
 }
 
 pub enum HidModifiers {
@@ -194,15 +234,15 @@ pub enum HidModifiers {
     Alt = 0x04,
     Super = 0x08,
 }
-
-impl From<HidKeys> for HidModifiers {
-    fn from(key: HidKeys) -> Self {
-        match key {
-            HidKeys::ModifierShift => Self::Shift,
-            HidKeys::ModifierControl => Self::Control,
-            HidKeys::ModifierAlt => Self::Alt,
-            HidKeys::ModifierSuper => Self::Super,
-            _ => Self::None,
+impl HidModifiers {
+    pub fn get_modifier(key: &HidKeys) -> u8 {
+        /* set the modifier */
+        match *key {
+            HidKeys::ModifierShift => HidModifiers::Shift as u8,
+            HidKeys::ModifierControl => HidModifiers::Control as u8,
+            HidKeys::ModifierAlt => HidModifiers::Alt as u8,
+            HidKeys::ModifierSuper => HidModifiers::Super as u8,
+            _ => 0,
         }
     }
 }
@@ -212,25 +252,65 @@ impl HidKeys {
         let mut vec: Vec<HidKeys, 16> = Vec::new();
 
         match key {
-            HidKeys::MacroOpenedBracket => {
-                vec.push(HidKeys::ModifierShift).unwrap();
-                vec.push(HidKeys::Num9).unwrap();
-                vec
-            }
-            HidKeys::MacroClosedBracket => {
-                vec.push(HidKeys::ModifierShift).unwrap();
-                vec.push(HidKeys::Num0).unwrap();
-                vec
-            }
             HidKeys::MacroCopy => {
                 vec.push(HidKeys::ModifierControl).unwrap();
                 vec.push(HidKeys::C).unwrap();
                 vec
             }
-
             HidKeys::MacroPaste => {
                 vec.push(HidKeys::ModifierControl).unwrap();
                 vec.push(HidKeys::V).unwrap();
+                vec
+            }
+
+            HidKeys::MacroClosedBracket => {
+                vec.push(HidKeys::ModifierShift).unwrap();
+                vec.push(HidKeys::Num0).unwrap();
+                vec
+            }
+            HidKeys::MacroExclamationMark => {
+                vec.push(HidKeys::ModifierShift).unwrap();
+                vec.push(HidKeys::Num1).unwrap();
+                vec
+            }
+            HidKeys::MacroAt => {
+                vec.push(HidKeys::ModifierShift).unwrap();
+                vec.push(HidKeys::Num2).unwrap();
+                vec
+            }
+            HidKeys::MacroHash => {
+                vec.push(HidKeys::ModifierShift).unwrap();
+                vec.push(HidKeys::Num3).unwrap();
+                vec
+            }
+            HidKeys::MacroDollar => {
+                vec.push(HidKeys::ModifierShift).unwrap();
+                vec.push(HidKeys::Num4).unwrap();
+                vec
+            }
+            HidKeys::MacroModul => {
+                vec.push(HidKeys::ModifierShift).unwrap();
+                vec.push(HidKeys::Num5).unwrap();
+                vec
+            }
+            HidKeys::MacroCaret => {
+                vec.push(HidKeys::ModifierShift).unwrap();
+                vec.push(HidKeys::Num6).unwrap();
+                vec
+            }
+            HidKeys::MacroAmpersand => {
+                vec.push(HidKeys::ModifierShift).unwrap();
+                vec.push(HidKeys::Num7).unwrap();
+                vec
+            }
+            HidKeys::MacroStar => {
+                vec.push(HidKeys::ModifierShift).unwrap();
+                vec.push(HidKeys::Num8).unwrap();
+                vec
+            }
+            HidKeys::MacroOpenedBracket => {
+                vec.push(HidKeys::ModifierShift).unwrap();
+                vec.push(HidKeys::Num9).unwrap();
                 vec
             }
             _ => vec,

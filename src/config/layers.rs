@@ -1,10 +1,5 @@
-use crate::{
-    config::{config::*, enums::*, layout::*},
-    debounce::{Debounce, KEY_RELEASED},
-    matrix::Key,
-};
+use crate::config::{config::*, enums::*, layout::*};
 
-use embassy_time::Instant;
 use heapless::FnvIndexMap;
 pub enum Layer {
     Base,
@@ -13,9 +8,6 @@ pub enum Layer {
 pub struct Layers {
     pub base: FnvIndexMap<(i8, i8), HidKeys, LAYER_INDEXMAP_SIZE>,
     pub upper: FnvIndexMap<(i8, i8), HidKeys, LAYER_INDEXMAP_SIZE>,
-    pub state: Layer,
-    layer_key: Key,
-    layer_key_last_pressed_time: Instant,
 }
 
 impl Layers {
@@ -23,71 +15,17 @@ impl Layers {
         Layers {
             base: FnvIndexMap::new(),
             upper: FnvIndexMap::new(),
-            state: Layer::Base,
-            layer_key: LAYER_KEY,
-            layer_key_last_pressed_time: Instant::now(),
         }
     }
     pub fn load_layout(&mut self) {
         *self = provide_layout();
     }
 
-    pub fn set_layer(&mut self, key: &Key, debounce: &mut Debounce) {
-        /* check if the key pressed is the layer key */
-        if (*key == self.layer_key)
-            & ((self.layer_key_last_pressed_time + DEBOUNCE_DELAY_LAYER_KEY)
-                <= debounce.key_pressed_time)
-        {
-            /* change the layer */
-            match self.state {
-                Layer::Base => {
-                    self.state = Layer::Upper;
-                }
-                Layer::Upper => {
-                    self.state = Layer::Base;
-                }
-            }
-
-            self.layer_key_last_pressed_time = Instant::now();
-            debounce.key_state = KEY_RELEASED;
-        }
-    }
-
-    pub fn get(&self, row: &i8, col: &i8) -> Option<&HidKeys> {
+    pub fn get(&mut self, row: &i8, col: &i8, layer_state: &Layer) -> Option<&HidKeys> {
         /* provide the key depending on the layer */
-        match self.state {
+        match layer_state {
             Layer::Base => self.base.get(&(*row, *col)),
             Layer::Upper => self.upper.get(&(*row, *col)),
-        }
-    }
-
-    pub fn set_modifier(&self, key: &HidKeys) -> u8 {
-        /* map the key to a modifier */
-        let hid_modifier = HidModifiers::from(*key);
-
-        /* set the modifier */
-        match hid_modifier {
-            HidModifiers::Shift => HidModifiers::Shift as u8,
-            HidModifiers::Control => HidModifiers::Control as u8,
-            HidModifiers::Alt => HidModifiers::Alt as u8,
-            HidModifiers::Super => HidModifiers::Super as u8,
-            _ => 0,
-        }
-    }
-
-    pub fn check_type(&self, key: &HidKeys) -> KeyType {
-        match *key {
-            HidKeys::MacroOpenedBracket
-            | HidKeys::MacroClosedBracket
-            | HidKeys::MacroCopy
-            | HidKeys::MacroPaste => KeyType::Macro,
-
-            HidKeys::ModifierShift
-            | HidKeys::ModifierControl
-            | HidKeys::ModifierAlt
-            | HidKeys::ModifierSuper => KeyType::Modifier,
-
-            _ => KeyType::Key,
         }
     }
 }
