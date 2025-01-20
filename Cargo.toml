@@ -21,6 +21,8 @@ opt-level = "z"
 default = ["embassy", "esp-idf-svc/native"]
 left-side = []
 right-side = []
+deep-sleep-mode = []
+light-sleep-mode = []
 dvorak = []
 qwerty = []
 

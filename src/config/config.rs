@@ -20,7 +20,7 @@ pub const SLEEP_DELAY: Duration = Duration::from_millis(300000);
 pub const SLEEP_DELAY_INIT: Duration = Duration::from_millis(60000);
 pub const PRESSED_KEYS_INDEXMAP_SIZE: usize = 16;
 pub const LAYER_INDEXMAP_SIZE: usize = 32;
-pub const ESP_POWER_LEVEL: EspPowerLevel = EspPowerLevel::Positive9;
+pub const ESP_POWER_LEVEL: EspPowerLevel = EspPowerLevel::Negative0;
 
 pub enum EspPowerLevel {
     Negative24,
