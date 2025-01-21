@@ -5,6 +5,7 @@ use embassy_time::Instant;
 use esp_idf_svc::hal::gpio::*;
 use esp_idf_svc::hal::peripherals::Peripherals;
 
+use esp_idf_sys::esp_bt_controller_disable;
 #[cfg(feature = "light-sleep-mode")]
 use esp_idf_sys::{
     self as _, gpio_int_type_t_GPIO_INTR_HIGH_LEVEL, gpio_num_t_GPIO_NUM_10,
@@ -74,11 +75,9 @@ impl PinMatrix<'_> {
         }
     }
 
-    #[cfg(feature = "light-sleep-mode")]
-    fn set_enable_interrupts(&mut self) {
-        for col in self.cols.iter_mut() {
-            col.enable_interrupt()
-                .expect("Not able to enable interrput.")
+    fn disable_bt(&mut self) {
+        unsafe {
+            esp_bt_controller_disable();
         }
     }
 
@@ -86,8 +85,44 @@ impl PinMatrix<'_> {
         self.enter_sleep_delay = Instant::now() + SLEEP_DELAY;
     }
 
+    #[cfg(feature = "deep-sleep-mode")]
+    fn enter_deep_sleep_mode(&mut self) {
+        use esp_idf_sys::{
+            esp_deep_sleep_enable_gpio_wakeup, esp_deep_sleep_start,
+            esp_deepsleep_gpio_wake_up_mode_t_ESP_GPIO_WAKEUP_GPIO_HIGH,
+        };
+
+        unsafe {
+            /* disable bt before entering sleep */
+            self.disable_bt();
+
+            #[cfg(feature = "left-side")]
+            esp_deep_sleep_enable_gpio_wakeup(
+                1 << 6, /* bitmask of GPIO_6 */
+                esp_deepsleep_gpio_wake_up_mode_t_ESP_GPIO_WAKEUP_GPIO_HIGH,
+            );
+
+            #[cfg(feature = "right-side")]
+            esp_deep_sleep_enable_gpio_wakeup(
+                1 << 20, /* bitmask of GPIO_20 */
+                esp_deepsleep_gpio_wake_up_mode_t_ESP_GPIO_WAKEUP_GPIO_HIGH,
+            );
+
+            /* enter deep sleep mode */
+            esp_deep_sleep_start();
+        }
+    }
+
     #[cfg(feature = "light-sleep-mode")]
-    fn set_gpio_wakeup_enable(&mut self) {
+    fn set_light_sleep_enable_interrupts(&mut self) {
+        for col in self.cols.iter_mut() {
+            col.enable_interrupt()
+                .expect("Not able to enable interrput.")
+        }
+    }
+
+    #[cfg(feature = "light-sleep-mode")]
+    fn set_light_sleep_gpio_wakeup_enable(&mut self) {
         unsafe {
             /* set gpios that can wake up the chip */
             esp_idf_sys::gpio_wakeup_enable(
@@ -109,39 +144,22 @@ impl PinMatrix<'_> {
         }
     }
 
-    #[cfg(feature = "deep-sleep-mode")]
-    fn enter_deep_sleep_mode(&mut self) {
-        use esp_idf_sys::{
-            esp_deep_sleep_enable_gpio_wakeup,
-            esp_deepsleep_gpio_wake_up_mode_t_ESP_GPIO_WAKEUP_GPIO_HIGH, gpio_num_t_GPIO_NUM_20,
-        };
-
-        #[cfg(feature = "left-side")]
-        esp_deep_sleep_enable_gpio_wakeup(
-            gpio_num_t_GPIO_NUM_6,
-            esp_deepsleep_gpio_wake_up_mode_t_ESP_GPIO_WAKEUP_GPIO_HIGH,
-        );
-
-        #[cfg(feature = "right-side")]
-        esp_deep_sleep_enable_gpio_wakeup(
-            gpio_num_t_GPIO_NUM_20,
-            esp_deepsleep_gpio_wake_up_mode_t_ESP_GPIO_WAKEUP_GPIO_HIGH,
-        );
-    }
-
     #[cfg(feature = "light-sleep-mode")]
     fn enter_light_sleep_mode(&mut self) {
         /* enable interrupts */
-        self.set_enable_interrupts();
+        self.set_light_sleep_enable_interrupts();
 
         /* set the home row to high */
         self.rows[1].set_high().unwrap();
 
         /* set gpio wakeup enable interrup */
-        self.set_gpio_wakeup_enable();
+        self.set_light_sleep_gpio_wakeup_enable();
 
         /* enter sleep mode */
         unsafe {
+            /* disable bt before entering sleep */
+            self.disable_bt();
+
             esp_idf_sys::esp_sleep_enable_gpio_switch(false);
 
             esp_idf_sys::esp_sleep_enable_gpio_wakeup();
@@ -210,13 +228,10 @@ pub async fn scan_grid(
     loop {
         if Instant::now() >= matrix.enter_sleep_delay {
             #[cfg(feature = "deep-sleep-mode")]
-            {
-                matrix.enter_deep_sleep_mode();
-            }
+            matrix.enter_deep_sleep_mode();
+
             #[cfg(feature = "light-sleep-mode")]
-            {
-                matrix.enter_light_sleep_mode();
-            }
+            matrix.enter_light_sleep_mode();
         } else {
             /* check rows and cols */
             for row in matrix.rows.iter_mut() {
