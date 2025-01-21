@@ -90,6 +90,7 @@ impl PinMatrix<'_> {
         use esp_idf_sys::{
             esp_deep_sleep_enable_gpio_wakeup, esp_deep_sleep_start,
             esp_deepsleep_gpio_wake_up_mode_t_ESP_GPIO_WAKEUP_GPIO_HIGH,
+            esp_sleep_enable_gpio_switch,
         };
 
         unsafe {
@@ -104,10 +105,11 @@ impl PinMatrix<'_> {
 
             #[cfg(feature = "right-side")]
             esp_deep_sleep_enable_gpio_wakeup(
-                1 << 20, /* bitmask of GPIO_20 */
+                1 << 5, /* bitmask of GPIO_20 */
                 esp_deepsleep_gpio_wake_up_mode_t_ESP_GPIO_WAKEUP_GPIO_HIGH,
             );
 
+            esp_sleep_enable_gpio_switch(true);
             /* enter deep sleep mode */
             esp_deep_sleep_start();
         }
