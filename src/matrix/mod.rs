@@ -6,6 +6,7 @@ use esp_idf_svc::hal::gpio::*;
 use esp_idf_svc::hal::peripherals::Peripherals;
 
 use esp_idf_sys::esp_bt_controller_disable;
+
 #[cfg(feature = "light-sleep-mode")]
 use esp_idf_sys::{
     self as _, gpio_int_type_t_GPIO_INTR_HIGH_LEVEL, gpio_num_t_GPIO_NUM_10,
@@ -27,7 +28,7 @@ impl Key {
     }
 }
 pub struct PinMatrix<'a> {
-    pub rows: [PinDriver<'a, AnyOutputPin, Output>; ROWS],
+    pub rows: [PinDriver<'a, AnyIOPin, Output>; ROWS],
     pub cols: [PinDriver<'a, AnyIOPin, Input>; COLS],
     pub enter_sleep_delay: Instant,
     pub sleep_delay_key_pressed: bool,
@@ -39,13 +40,13 @@ impl PinMatrix<'_> {
 
         PinMatrix {
             rows: [
-                PinDriver::output(peripherals.pins.gpio0.downgrade_output())
+                PinDriver::output(peripherals.pins.gpio0.downgrade())
                     .expect("Not able to set port as output."),
-                PinDriver::output(peripherals.pins.gpio1.downgrade_output())
+                PinDriver::output(peripherals.pins.gpio1.downgrade())
                     .expect("Not able to set port as output."),
-                PinDriver::output(peripherals.pins.gpio2.downgrade_output())
+                PinDriver::output(peripherals.pins.gpio2.downgrade())
                     .expect("Not able to set port as output."),
-                PinDriver::output(peripherals.pins.gpio3.downgrade_output())
+                PinDriver::output(peripherals.pins.gpio3.downgrade())
                     .expect("Not able to set port as output."),
             ],
             cols: [
@@ -75,12 +76,6 @@ impl PinMatrix<'_> {
         }
     }
 
-    fn disable_bt(&mut self) {
-        unsafe {
-            esp_bt_controller_disable();
-        }
-    }
-
     fn reset_sleep_delay(&mut self) {
         self.enter_sleep_delay = Instant::now() + SLEEP_DELAY;
     }
@@ -89,27 +84,41 @@ impl PinMatrix<'_> {
     fn enter_deep_sleep_mode(&mut self) {
         use esp_idf_sys::{
             esp_deep_sleep_enable_gpio_wakeup, esp_deep_sleep_start,
-            esp_deepsleep_gpio_wake_up_mode_t_ESP_GPIO_WAKEUP_GPIO_HIGH,
-            esp_sleep_enable_gpio_switch,
+            esp_deepsleep_gpio_wake_up_mode_t_ESP_GPIO_WAKEUP_GPIO_LOW,
+            esp_sleep_config_gpio_isolate, esp_sleep_enable_gpio_switch,
+            esp_sleep_mode_t_ESP_SLEEP_MODE_LIGHT_SLEEP, esp_sleep_pd_config,
+            esp_sleep_pd_domain_t_ESP_PD_DOMAIN_RC_FAST,
+            esp_sleep_pd_domain_t_ESP_PD_DOMAIN_VDDSDIO, esp_sleep_pd_option_t_ESP_PD_OPTION_AUTO,
+            esp_sleep_pd_option_t_ESP_PD_OPTION_ON, gpio_deep_sleep_hold_dis,
         };
+
+        self.rows[3].set_high().unwrap();
 
         unsafe {
             /* disable bt before entering sleep */
-            self.disable_bt();
+            esp_bt_controller_disable();
+
+            gpio_deep_sleep_hold_dis();
+
+            esp_sleep_config_gpio_isolate();
+
+            esp_sleep_pd_config(
+                esp_sleep_pd_domain_t_ESP_PD_DOMAIN_V,
+                esp_sleep_pd_option_t_ESP_PD_OPTION_ON,
+            );
 
             #[cfg(feature = "left-side")]
             esp_deep_sleep_enable_gpio_wakeup(
-                1 << 6, /* bitmask of GPIO_6 */
-                esp_deepsleep_gpio_wake_up_mode_t_ESP_GPIO_WAKEUP_GPIO_HIGH,
+                1 << 5, /* bitmask of GPIO_5 */
+                esp_deepsleep_gpio_wake_up_mode_t_ESP_GPIO_WAKEUP_GPIO_LOW,
             );
 
             #[cfg(feature = "right-side")]
             esp_deep_sleep_enable_gpio_wakeup(
-                1 << 5, /* bitmask of GPIO_20 */
-                esp_deepsleep_gpio_wake_up_mode_t_ESP_GPIO_WAKEUP_GPIO_HIGH,
+                1 << 20, /* bitmask of GPIO_20 */
+                esp_deepsleep_gpio_wake_up_mode_t_ESP_GPIO_WAKEUP_GPIO_LOW,
             );
 
-            esp_sleep_enable_gpio_switch(true);
             /* enter deep sleep mode */
             esp_deep_sleep_start();
         }
@@ -160,7 +169,7 @@ impl PinMatrix<'_> {
         /* enter sleep mode */
         unsafe {
             /* disable bt before entering sleep */
-            self.disable_bt();
+            esp_bt_controller_disable();
 
             esp_idf_sys::esp_sleep_enable_gpio_switch(false);
 
