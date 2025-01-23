@@ -18,7 +18,7 @@ use crate::matrix::{scan_grid, Key};
 fn main() -> anyhow::Result<()> {
     esp_idf_svc::sys::link_patches();
 
-    // Bind the log crate to the ESP Logging facilities
+    /* Bind the log crate to the ESP Logging facilities */
     esp_idf_svc::log::EspLogger::initialize_default();
 
     /* initialize keys pressed hashmap */
