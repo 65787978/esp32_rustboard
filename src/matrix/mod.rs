@@ -5,12 +5,10 @@ use embassy_time::Instant;
 use esp_idf_svc::hal::gpio::*;
 use esp_idf_svc::hal::peripherals::Peripherals;
 
-use esp_idf_sys::esp_bt_controller_disable;
-
-#[cfg(feature = "light-sleep-mode")]
+#[cfg(feature = "sleep-mode")]
 use esp_idf_sys::{
-    self as _, gpio_int_type_t_GPIO_INTR_HIGH_LEVEL, gpio_num_t_GPIO_NUM_10,
-    gpio_num_t_GPIO_NUM_20, gpio_num_t_GPIO_NUM_6, gpio_num_t_GPIO_NUM_7,
+    self as _, esp_bt_controller_disable, gpio_int_type_t_GPIO_INTR_HIGH_LEVEL,
+    gpio_num_t_GPIO_NUM_10, gpio_num_t_GPIO_NUM_20, gpio_num_t_GPIO_NUM_6, gpio_num_t_GPIO_NUM_7,
 };
 
 use heapless::FnvIndexMap;
@@ -30,8 +28,8 @@ impl Key {
 pub struct PinMatrix<'a> {
     pub rows: [PinDriver<'a, AnyIOPin, Output>; ROWS],
     pub cols: [PinDriver<'a, AnyIOPin, Input>; COLS],
+    #[cfg(feature = "sleep-mode")]
     pub enter_sleep_delay: Instant,
-    pub sleep_delay_key_pressed: bool,
 }
 
 impl PinMatrix<'_> {
@@ -63,8 +61,8 @@ impl PinMatrix<'_> {
                 PinDriver::input(peripherals.pins.gpio5.downgrade())
                     .expect("Not able to set port as input."),
             ],
+            #[cfg(feature = "sleep-mode")]
             enter_sleep_delay: Instant::now() + SLEEP_DELAY_INIT,
-            sleep_delay_key_pressed: false,
         }
     }
 
@@ -76,55 +74,7 @@ impl PinMatrix<'_> {
         }
     }
 
-    fn reset_sleep_delay(&mut self) {
-        self.enter_sleep_delay = Instant::now() + SLEEP_DELAY;
-    }
-
-    #[cfg(feature = "deep-sleep-mode")]
-    fn enter_deep_sleep_mode(&mut self) {
-        use esp_idf_sys::{
-            esp_deep_sleep_enable_gpio_wakeup, esp_deep_sleep_start,
-            esp_deepsleep_gpio_wake_up_mode_t_ESP_GPIO_WAKEUP_GPIO_LOW,
-            esp_sleep_config_gpio_isolate, esp_sleep_enable_gpio_switch,
-            esp_sleep_mode_t_ESP_SLEEP_MODE_LIGHT_SLEEP, esp_sleep_pd_config,
-            esp_sleep_pd_domain_t_ESP_PD_DOMAIN_RC_FAST,
-            esp_sleep_pd_domain_t_ESP_PD_DOMAIN_VDDSDIO, esp_sleep_pd_option_t_ESP_PD_OPTION_AUTO,
-            esp_sleep_pd_option_t_ESP_PD_OPTION_ON, gpio_deep_sleep_hold_dis,
-        };
-
-        self.rows[3].set_high().unwrap();
-
-        unsafe {
-            /* disable bt before entering sleep */
-            esp_bt_controller_disable();
-
-            gpio_deep_sleep_hold_dis();
-
-            esp_sleep_config_gpio_isolate();
-
-            esp_sleep_pd_config(
-                esp_sleep_pd_domain_t_ESP_PD_DOMAIN_V,
-                esp_sleep_pd_option_t_ESP_PD_OPTION_ON,
-            );
-
-            #[cfg(feature = "left-side")]
-            esp_deep_sleep_enable_gpio_wakeup(
-                1 << 5, /* bitmask of GPIO_5 */
-                esp_deepsleep_gpio_wake_up_mode_t_ESP_GPIO_WAKEUP_GPIO_LOW,
-            );
-
-            #[cfg(feature = "right-side")]
-            esp_deep_sleep_enable_gpio_wakeup(
-                1 << 20, /* bitmask of GPIO_20 */
-                esp_deepsleep_gpio_wake_up_mode_t_ESP_GPIO_WAKEUP_GPIO_LOW,
-            );
-
-            /* enter deep sleep mode */
-            esp_deep_sleep_start();
-        }
-    }
-
-    #[cfg(feature = "light-sleep-mode")]
+    #[cfg(feature = "sleep-mode")]
     fn set_light_sleep_enable_interrupts(&mut self) {
         for col in self.cols.iter_mut() {
             col.enable_interrupt()
@@ -132,7 +82,7 @@ impl PinMatrix<'_> {
         }
     }
 
-    #[cfg(feature = "light-sleep-mode")]
+    #[cfg(feature = "sleep-mode")]
     fn set_light_sleep_gpio_wakeup_enable(&mut self) {
         unsafe {
             /* set gpios that can wake up the chip */
@@ -155,7 +105,7 @@ impl PinMatrix<'_> {
         }
     }
 
-    #[cfg(feature = "light-sleep-mode")]
+    #[cfg(feature = "sleep-mode")]
     fn enter_light_sleep_mode(&mut self) {
         /* enable interrupts */
         self.set_light_sleep_enable_interrupts();
@@ -175,15 +125,14 @@ impl PinMatrix<'_> {
 
             esp_idf_sys::esp_sleep_enable_gpio_wakeup();
 
+            #[cfg(feature = "debug")]
             log::info!("Entering sleep...");
 
             /* enter sleep */
             esp_idf_sys::esp_light_sleep_start();
 
+            #[cfg(feature = "debug")]
             log::info!("Woke up...");
-
-            /* reset sleep delay */
-            self.reset_sleep_delay();
 
             /* restart the cpu, so we have faster ble connection after sleep */
             esp_idf_sys::esp_restart();
@@ -194,7 +143,7 @@ impl PinMatrix<'_> {
 fn store_key(
     keys_pressed: &Mutex<FnvIndexMap<Key, Debounce, PRESSED_KEYS_INDEXMAP_SIZE>>,
     key: &Key,
-) -> bool {
+) -> Option<()> {
     /* lock the hashmap */
     if let Some(mut keys_pressed) = keys_pressed.try_lock() {
         /* Inserts a key-value pair into the map.
@@ -214,13 +163,14 @@ fn store_key(
             )
             .expect("Error setting new key in the hashmap");
 
+        #[cfg(feature = "debug")]
         log::info!("Pressed keys stored! X:{}, Y:{}", key.row, key.col);
 
         /* return true to reset the sleep delay */
-        true
+        Some(())
     } else {
         /* else return false */
-        false
+        None
     }
 }
 
@@ -237,52 +187,49 @@ pub async fn scan_grid(
     let mut count = Key::new(0, 0);
 
     loop {
+        #[cfg(feature = "sleep-mode")]
         if Instant::now() >= matrix.enter_sleep_delay {
-            #[cfg(feature = "deep-sleep-mode")]
-            matrix.enter_deep_sleep_mode();
-
-            #[cfg(feature = "light-sleep-mode")]
             matrix.enter_light_sleep_mode();
-        } else {
-            /* check rows and cols */
-            for row in matrix.rows.iter_mut() {
-                /* set row to high */
-                row.set_high().unwrap();
-
-                /* delay so pin can propagate */
-                delay_us(100).await;
-
-                /* check if a col is high */
-                for col in matrix.cols.iter() {
-                    /* check if a col is set to high (key pressed) */
-                    if col.is_high() {
-                        /* store the key */
-                        matrix.sleep_delay_key_pressed = store_key(keys_pressed, &count);
-                    }
-                    /* increment col */
-                    count.col += 1;
-                }
-                /* set row to low */
-                row.set_low().unwrap();
-
-                /* increment row */
-                count.row += 1;
-
-                /* reset col count */
-                count.col = 0;
-            }
-
-            /* reset row count */
-            count.row = 0;
-
-            /* if a key has been pressed */
-            if matrix.sleep_delay_key_pressed {
-                /* reset key_pressed */
-                matrix.sleep_delay_key_pressed = false;
-
-                /* reset sleep delay */
-                matrix.reset_sleep_delay();
-            }
         }
+
+        /* check rows and cols */
+        for row in matrix.rows.iter_mut() {
+            /* set row to high */
+            row.set_high().unwrap();
+
+            /* delay so pin can propagate */
+            delay_us(100).await;
+
+            /* check if a col is high */
+            for col in matrix.cols.iter() {
+                /* check if a col is set to high (key pressed) */
+                if col.is_high() {
+                    /* store the key */
+                    #[cfg(feature = "sleep-mode")]
+                    match store_key(keys_pressed, &count) {
+                        Some(()) => {
+                            matrix.enter_sleep_delay = Instant::now() + SLEEP_DELAY;
+                        }
+                        None => { /* do nothing */ }
+                    }
+
+                    #[cfg(not(feature = "sleep-mode"))]
+                    store_key(keys_pressed, &count).unwrap();
+                }
+                /* increment col */
+                count.col += 1;
+            }
+            /* set row to low */
+            row.set_low().unwrap();
+
+            /* increment row */
+            count.row += 1;
+
+            /* reset col count */
+            count.col = 0;
+        }
+
+        /* reset row count */
+        count.row = 0;
     }
 }
