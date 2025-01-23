@@ -272,6 +272,7 @@ pub async fn ble_send_keys(
                         }
                     }
 
+                    #[cfg(feature = "debug")]
                     /* debug log */
                     log::info!(
                         "ble_keyboard.key_report.keys: {:?}",
@@ -290,6 +291,7 @@ pub async fn ble_send_keys(
             /* there must be a delay so the WDT in not triggered */
             delay_ms(1).await;
         } else {
+            #[cfg(feature = "debug")]
             /* debug log */
             log::info!("Keyboard not connected!");
 
