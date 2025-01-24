@@ -4,6 +4,7 @@ to flash: espflash flash ./target/riscv32imc-esp-espidf/release/esp32_rustboard 
 */
 
 use anyhow;
+use ble::BleStatus;
 use embassy_futures::select::select3;
 use esp32_rustboard::*;
 use esp_idf_hal::task::block_on;
@@ -25,11 +26,14 @@ fn main() -> anyhow::Result<()> {
     let keys_pressed: Mutex<FnvIndexMap<Key, Debounce, PRESSED_KEYS_INDEXMAP_SIZE>> =
         Mutex::new(FnvIndexMap::new());
 
+    /* ble connection information shared variable */
+    let ble_status: Mutex<BleStatus> = Mutex::new(BleStatus::NotConnected);
+
     /* run the tasks concurrently */
     block_on(async {
         select3(
-            ble_send_keys(&keys_pressed),
-            scan_grid(&keys_pressed),
+            ble_send_keys(&keys_pressed, &ble_status),
+            scan_grid(&keys_pressed, &ble_status),
             calculate_debounce(&keys_pressed),
         )
         .await;
