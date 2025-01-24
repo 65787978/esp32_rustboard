@@ -103,7 +103,6 @@ pub struct BleKeyboard {
     output_keyboard: Arc<Mutex<BLECharacteristic>>,
     input_media_keys: Arc<Mutex<BLECharacteristic>>,
     key_report: KeyReport,
-    key_count: usize,
 }
 
 impl BleKeyboard {
@@ -159,24 +158,11 @@ impl BleKeyboard {
                 reserved: 0,
                 keys: [0; 6],
             },
-            key_count: 0,
         }
     }
 
     pub fn connected(&self) -> bool {
         self.server.connected_count() > 0
-    }
-
-    pub fn release(&mut self) {
-        /* clear the key count */
-        self.key_count = 0;
-
-        /* clear the key report */
-        self.key_report.modifiers = 0;
-        self.key_report.keys.fill(0);
-
-        /* send the report */
-        self.send_report();
     }
 
     fn send_report(&mut self) {
@@ -202,6 +188,99 @@ impl BleKeyboard {
                 esp_ble_power_type_t_ESP_BLE_PWR_TYPE_SCAN,
                 ESP_POWER_LEVEL.convert(),
             );
+        }
+    }
+}
+
+fn send_keys(ble_keyboard: &mut BleKeyboard, valid_key: &HidKeys, layer_state: &mut Layer) {
+    /* get the key type */
+    match KeyType::check_type(valid_key) {
+        KeyType::Macro => {
+            let macro_valid_keys = HidKeys::get_macro_sequence(valid_key);
+            for valid_key in macro_valid_keys.iter() {
+                send_keys(ble_keyboard, valid_key, layer_state);
+            }
+        }
+        KeyType::Layer => {
+            /* check and set the layer */
+            *layer_state = Layer::Upper;
+
+            /* release all keys */
+            ble_keyboard
+                .key_report
+                .keys
+                .iter_mut()
+                .for_each(|value| *value = 0);
+
+            /* release modifiers */
+            ble_keyboard.key_report.modifiers = 0;
+        }
+        KeyType::Modifier => {
+            ble_keyboard.key_report.modifiers |= HidModifiers::get_modifier(valid_key);
+        }
+        KeyType::Key => {
+            /* check if the key count is less than 6 */
+            if !ble_keyboard.key_report.keys.contains(&(*valid_key as u8)) {
+                /* find the first key slot in the array that is
+                 * free */
+                match ble_keyboard
+                    .key_report
+                    .keys
+                    .iter()
+                    .position(|&value| value == 0)
+                {
+                    Some(index) => {
+                        /* add the new key to that position */
+                        ble_keyboard.key_report.keys[index] = *valid_key as u8
+                    }
+                    None => { /* there is no free key slot available */ }
+                }
+            }
+        }
+    }
+}
+
+fn remove_keys(ble_keyboard: &mut BleKeyboard, valid_key: &HidKeys, layer_state: &mut Layer) {
+    /* get the key type */
+    match KeyType::check_type(valid_key) {
+        KeyType::Macro => {
+            let macro_valid_keys = HidKeys::get_macro_sequence(valid_key);
+            for valid_key in macro_valid_keys.iter() {
+                remove_keys(ble_keyboard, valid_key, layer_state);
+            }
+        }
+        KeyType::Layer => {
+            /* check and set the layer */
+            *layer_state = Layer::Base;
+
+            /* release all keys */
+            ble_keyboard
+                .key_report
+                .keys
+                .iter_mut()
+                .for_each(|value| *value = 0);
+
+            /* release modifiers */
+            ble_keyboard.key_report.modifiers = 0;
+        }
+        KeyType::Modifier => {
+            /* remove the modifier */
+            ble_keyboard.key_report.modifiers &= !HidModifiers::get_modifier(valid_key);
+        }
+        KeyType::Key => {
+            /* find the key slot of the released key */
+            match ble_keyboard
+                .key_report
+                .keys
+                .iter()
+                .position(|&value| value == *valid_key as u8)
+            {
+                Some(index) => {
+                    /* remove the key from the key slot */
+                    ble_keyboard.key_report.keys[index] = 0
+                }
+                None => { /* do nothing */ }
+            }
         }
     }
 }
@@ -303,99 +382,6 @@ pub async fn ble_send_keys(
 
             /* sleep for 100ms */
             delay_ms(100).await;
-        }
-    }
-}
-
-fn send_keys(ble_keyboard: &mut BleKeyboard, valid_key: &HidKeys, layer_state: &mut Layer) {
-    /* get the key type */
-    match KeyType::check_type(valid_key) {
-        KeyType::Macro => {
-            let macro_valid_keys = HidKeys::get_macro_sequence(valid_key);
-            for valid_key in macro_valid_keys.iter() {
-                send_keys(ble_keyboard, valid_key, layer_state);
-            }
-        }
-        KeyType::Layer => {
-            /* check and set the layer */
-            *layer_state = Layer::Upper;
-
-            /* release all keys */
-            ble_keyboard
-                .key_report
-                .keys
-                .iter_mut()
-                .for_each(|value| *value = 0);
-
-            /* release modifiers */
-            ble_keyboard.key_report.modifiers = 0;
-        }
-        KeyType::Modifier => {
-            ble_keyboard.key_report.modifiers |= HidModifiers::get_modifier(valid_key);
-        }
-        KeyType::Key => {
-            /* check if the key count is less than 6 */
-            if !ble_keyboard.key_report.keys.contains(&(*valid_key as u8)) {
-                /* find the first key slot in the array that is
-                 * free */
-                match ble_keyboard
-                    .key_report
-                    .keys
-                    .iter()
-                    .position(|&value| value == 0)
-                {
-                    Some(index) => {
-                        /* add the new key to that position */
-                        ble_keyboard.key_report.keys[index] = *valid_key as u8
-                    }
-                    None => { /* there is no free key slot available */ }
-                }
-            }
-        }
-    }
-}
-
-fn remove_keys(ble_keyboard: &mut BleKeyboard, valid_key: &HidKeys, layer_state: &mut Layer) {
-    /* get the key type */
-    match KeyType::check_type(valid_key) {
-        KeyType::Macro => {
-            let macro_valid_keys = HidKeys::get_macro_sequence(valid_key);
-            for valid_key in macro_valid_keys.iter() {
-                remove_keys(ble_keyboard, valid_key, layer_state);
-            }
-        }
-        KeyType::Layer => {
-            /* check and set the layer */
-            *layer_state = Layer::Base;
-
-            /* release all keys */
-            ble_keyboard
-                .key_report
-                .keys
-                .iter_mut()
-                .for_each(|value| *value = 0);
-
-            /* release modifiers */
-            ble_keyboard.key_report.modifiers = 0;
-        }
-        KeyType::Modifier => {
-            /* remove the modifier */
-            ble_keyboard.key_report.modifiers &= !HidModifiers::get_modifier(valid_key);
-        }
-        KeyType::Key => {
-            /* find the key slot of the released key */
-            match ble_keyboard
-                .key_report
-                .keys
-                .iter()
-                .position(|&value| value == *valid_key as u8)
-            {
-                Some(index) => {
-                    /* remove the key from the key slot */
-                    ble_keyboard.key_report.keys[index] = 0
-                }
-                None => { /* do nothing */ }
-            }
         }
     }
 }
