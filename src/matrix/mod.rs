@@ -1,3 +1,4 @@
+use crate::ble::BleStatus;
 use crate::debounce::KEY_PRESSED;
 use crate::delay::*;
 use crate::{config::config::*, debounce::Debounce};
@@ -176,6 +177,7 @@ fn store_key(
 
 pub async fn scan_grid(
     keys_pressed: &Mutex<FnvIndexMap<Key, Debounce, PRESSED_KEYS_INDEXMAP_SIZE>>,
+    ble_status: &Mutex<BleStatus>,
 ) -> ! {
     /* construct the matrix */
     let mut matrix = PinMatrix::new();
@@ -186,50 +188,68 @@ pub async fn scan_grid(
     /* initialize counts */
     let mut count = Key::new(0, 0);
 
+    /* local ble status variable */
+    let mut ble_status_local: BleStatus = BleStatus::NotConnected;
+
     loop {
         #[cfg(feature = "sleep-mode")]
         if Instant::now() >= matrix.enter_sleep_delay {
             matrix.enter_light_sleep_mode();
         }
 
-        /* check rows and cols */
-        for row in matrix.rows.iter_mut() {
-            /* set row to high */
-            row.set_high().unwrap();
-
-            /* delay so pin can propagate */
-            delay_us(100).await;
-
-            /* check if a col is high */
-            for col in matrix.cols.iter() {
-                /* check if a col is set to high (key pressed) */
-                if col.is_high() {
-                    /* store the key */
-                    #[cfg(feature = "sleep-mode")]
-                    match store_key(keys_pressed, &count) {
-                        Some(()) => {
-                            matrix.enter_sleep_delay = Instant::now() + SLEEP_DELAY;
-                        }
-                        None => { /* do nothing */ }
-                    }
-
-                    #[cfg(not(feature = "sleep-mode"))]
-                    store_key(keys_pressed, &count).unwrap();
-                }
-                /* increment col */
-                count.col += 1;
-            }
-            /* set row to low */
-            row.set_low().unwrap();
-
-            /* increment row */
-            count.row += 1;
-
-            /* reset col count */
-            count.col = 0;
+        /* check and store the ble status, then release the lock */
+        if let Some(ble_status) = ble_status.try_lock() {
+            ble_status_local = *ble_status;
         }
 
-        /* reset row count */
-        count.row = 0;
+        /* if a connection is established, run the key matrix */
+        match ble_status_local {
+            BleStatus::Connected => {
+                /* check rows and cols */
+                for row in matrix.rows.iter_mut() {
+                    /* set row to high */
+                    row.set_high().unwrap();
+
+                    /* delay so pin can propagate */
+                    delay_us(100).await;
+
+                    /* check if a col is high */
+                    for col in matrix.cols.iter() {
+                        /* check if a col is set to high (key pressed) */
+                        if col.is_high() {
+                            /* store the key */
+                            #[cfg(feature = "sleep-mode")]
+                            match store_key(keys_pressed, &count) {
+                                Some(()) => {
+                                    matrix.enter_sleep_delay = Instant::now() + SLEEP_DELAY;
+                                }
+                                None => { /* do nothing */ }
+                            }
+
+                            #[cfg(not(feature = "sleep-mode"))]
+                            store_key(keys_pressed, &count).unwrap();
+                        }
+                        /* increment col */
+                        count.col += 1;
+                    }
+                    /* set row to low */
+                    row.set_low().unwrap();
+
+                    /* increment row */
+                    count.row += 1;
+
+                    /* reset col count */
+                    count.col = 0;
+                }
+
+                /* reset row count */
+                count.row = 0;
+            }
+            BleStatus::NotConnected => {
+                /* wait till there is a connection */
+                /* sleep for 100ms */
+                delay_ms(100).await;
+            }
+        }
     }
 }
