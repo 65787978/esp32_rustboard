@@ -6,6 +6,21 @@ Welcome to the Rustboard Keyboard Firmware project! This firmware is designed fr
 
 This project aims to provide a customizable and efficient firmware solution for enthusiasts and developers looking to create their own split keyboard setups. With a focus on modularity and ease of use, you can easily adapt the firmware to suit your specific needs.
 
+## Features
+- Bluetooth enabled
+- Layers (activated on hold)
+- Macros
+- Sleep mode (reduced power draw when not in use)
+- MCU Radio strength can be adjusted
+
+## Build related features
+- When compiling, the features flag can be called with the following keywords:
+   - left-side, right-side (for which board to be build for)
+   - sleep-mode (if sleep should be enabled)
+   - dvorak (for dvorak keyboard layout)
+   - qwerty (for qwerty keyboard layout)
+   - debug (only should be use in development for console logs)
+
 ## Current Bugs
 
 - **Both halves of the keyboard are connected individually**: As of now, both keyboard halves are connected as indipendant keyboards. This will be fixed in the future.
@@ -31,13 +46,13 @@ To compile the firmware, follow these steps:
    For left half of the keyboard with 'qwerty' layout:
 
    ```bash
-   cargo build --release --features "qwerty","left-side"
+   cargo build --release --features qwerty,left-side,sleep-mode
    ```
 
    For right half of the keyboard with 'qwerty' layout:
 
    ```bash
-   cargo build --release --features "qwerty","right-side"
+   cargo build --release --features qwerty,right-side,sleep-mode
    ```
 
 5. **Flash the Firmware**: Connect your ESP32C3 device and use the following command to flash the firmware:
