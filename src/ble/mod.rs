@@ -105,6 +105,12 @@ pub struct BleKeyboard {
     key_report: KeyReport,
 }
 
+#[derive(Clone, Copy, Debug)]
+pub enum BleStatus {
+    Connected,
+    NotConnected,
+}
+
 impl BleKeyboard {
     pub fn new() -> Self {
         let device = BLEDevice::take();
@@ -287,6 +293,7 @@ fn remove_keys(ble_keyboard: &mut BleKeyboard, valid_key: &HidKeys, layer_state:
 
 pub async fn ble_send_keys(
     keys_pressed: &spinMutex<FnvIndexMap<Key, Debounce, PRESSED_KEYS_INDEXMAP_SIZE>>,
+    ble_status: &spinMutex<BleStatus>,
 ) -> ! {
     /* construct ble */
     let mut ble_keyboard = BleKeyboard::new();
@@ -309,6 +316,11 @@ pub async fn ble_send_keys(
     /* Run the main loop */
     loop {
         if ble_keyboard.connected() {
+            /* check and store the ble status, then release the lock */
+            if let Some(mut ble_status) = ble_status.try_lock() {
+                *ble_status = BleStatus::Connected;
+            }
+
             /* check if power save has been set */
             if power_save_flag {
                 /* set ble power to lowest possible */
@@ -373,6 +385,11 @@ pub async fn ble_send_keys(
             #[cfg(feature = "debug")]
             /* debug log */
             log::info!("Keyboard not connected!");
+
+            /* check and store the ble status, then release the lock */
+            if let Some(mut ble_status) = ble_status.try_lock() {
+                *ble_status = BleStatus::NotConnected;
+            }
 
             /* check the power save flag */
             if !power_save_flag {
