@@ -103,7 +103,12 @@ pub struct BleKeyboard {
     output_keyboard: Arc<Mutex<BLECharacteristic>>,
     input_media_keys: Arc<Mutex<BLECharacteristic>>,
     key_report: KeyReport,
-    key_count: usize,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub enum BleStatus {
+    Connected,
+    NotConnected,
 }
 
 impl BleKeyboard {
@@ -159,24 +164,11 @@ impl BleKeyboard {
                 reserved: 0,
                 keys: [0; 6],
             },
-            key_count: 0,
         }
     }
 
     pub fn connected(&self) -> bool {
         self.server.connected_count() > 0
-    }
-
-    pub fn release(&mut self) {
-        /* clear the key count */
-        self.key_count = 0;
-
-        /* clear the key report */
-        self.key_report.modifiers = 0;
-        self.key_report.keys.fill(0);
-
-        /* send the report */
-        self.send_report();
     }
 
     fn send_report(&mut self) {
@@ -202,105 +194,6 @@ impl BleKeyboard {
                 esp_ble_power_type_t_ESP_BLE_PWR_TYPE_SCAN,
                 ESP_POWER_LEVEL.convert(),
             );
-        }
-    }
-}
-
-pub async fn ble_send_keys(
-    keys_pressed: &spinMutex<FnvIndexMap<Key, Debounce, PRESSED_KEYS_INDEXMAP_SIZE>>,
-) -> ! {
-    /* construct ble */
-    let mut ble_keyboard = BleKeyboard::new();
-
-    /* initialize layers */
-    let mut layers = Layers::new();
-
-    /* load the specified layout */
-    layers.load_layout();
-
-    /* layer state */
-    let mut layer_state = Layer::Base;
-
-    /* vec to store the keys needed to be removed */
-    let mut pressed_keys_to_remove: Vec<Key, 6> = Vec::new();
-
-    /* flag to set the power mode of the esp */
-    let mut power_save_flag: bool = true;
-
-    /* Run the main loop */
-    loop {
-        if ble_keyboard.connected() {
-            /* check if power save has been set */
-            if power_save_flag {
-                /* set ble power to lowest possible */
-                ble_keyboard.set_ble_power_save();
-                /* set flag to false */
-                power_save_flag = false;
-            }
-
-            /* try to lock the hashmap */
-            if let Some(mut keys_pressed) = keys_pressed.try_lock() {
-                /* check if there are pressed keys */
-                if !keys_pressed.is_empty() {
-                    /* iter trough the pressed keys */
-                    for (key, debounce) in keys_pressed.iter_mut() {
-                        /*check the key debounce state */
-                        match debounce.key_state {
-                            KEY_PRESSED => {
-                                /* get the pressed key */
-                                if let Some(valid_key) =
-                                    layers.get(&key.row, &key.col, &layer_state)
-                                {
-                                    send_keys(&mut ble_keyboard, valid_key, &mut layer_state);
-                                }
-                            }
-                            /* check if the key is calculated for debounce */
-                            KEY_RELEASED => {
-                                /* get the mapped key from the hashmap */
-                                if let Some(valid_key) =
-                                    layers.get(&key.row, &key.col, &layer_state)
-                                {
-                                    remove_keys(&mut ble_keyboard, valid_key, &mut layer_state);
-                                }
-                                /* if key has been debounced, add it to be removed */
-                                pressed_keys_to_remove
-                                    .push(*key)
-                                    .expect("Error adding a key to be removed!");
-                            }
-
-                            _ => { /* do nothing */ }
-                        }
-                    }
-
-                    /* debug log */
-                    log::info!(
-                        "ble_keyboard.key_report.keys: {:?}",
-                        ble_keyboard.key_report.keys
-                    );
-
-                    /* sent the new report */
-                    ble_keyboard.send_report();
-
-                    /* remove the sent keys and empty the vec */
-                    while let Some(key) = pressed_keys_to_remove.pop() {
-                        keys_pressed.remove(&key).unwrap();
-                    }
-                }
-            }
-            /* there must be a delay so the WDT in not triggered */
-            delay_ms(1).await;
-        } else {
-            /* debug log */
-            log::info!("Keyboard not connected!");
-
-            /* check the power save flag */
-            if !power_save_flag {
-                /* if false, set to true */
-                power_save_flag = true;
-            }
-
-            /* sleep for 100ms */
-            delay_ms(100).await;
         }
     }
 }
@@ -394,6 +287,118 @@ fn remove_keys(ble_keyboard: &mut BleKeyboard, valid_key: &HidKeys, layer_state:
                 }
                 None => { /* do nothing */ }
             }
+        }
+    }
+}
+
+pub async fn ble_send_keys(
+    keys_pressed: &spinMutex<FnvIndexMap<Key, Debounce, PRESSED_KEYS_INDEXMAP_SIZE>>,
+    ble_status: &spinMutex<BleStatus>,
+) -> ! {
+    /* construct ble */
+    let mut ble_keyboard = BleKeyboard::new();
+
+    /* initialize layers */
+    let mut layers = Layers::new();
+
+    /* load the specified layout */
+    layers.load_layout();
+
+    /* layer state */
+    let mut layer_state = Layer::Base;
+
+    /* vec to store the keys needed to be removed */
+    let mut pressed_keys_to_remove: Vec<Key, 6> = Vec::new();
+
+    /* flag to set the power mode of the esp */
+    let mut power_save_flag: bool = true;
+
+    /* Run the main loop */
+    loop {
+        if ble_keyboard.connected() {
+            /* check and store the ble status, then release the lock */
+            if let Some(mut ble_status) = ble_status.try_lock() {
+                *ble_status = BleStatus::Connected;
+            }
+
+            /* check if power save has been set */
+            if power_save_flag {
+                /* set ble power to lowest possible */
+                ble_keyboard.set_ble_power_save();
+                /* set flag to false */
+                power_save_flag = false;
+            }
+
+            /* try to lock the hashmap */
+            if let Some(mut keys_pressed) = keys_pressed.try_lock() {
+                /* check if there are pressed keys */
+                if !keys_pressed.is_empty() {
+                    /* iter trough the pressed keys */
+                    for (key, debounce) in keys_pressed.iter_mut() {
+                        /*check the key debounce state */
+                        match debounce.key_state {
+                            KEY_PRESSED => {
+                                /* get the pressed key */
+                                if let Some(valid_key) =
+                                    layers.get(&key.row, &key.col, &layer_state)
+                                {
+                                    send_keys(&mut ble_keyboard, valid_key, &mut layer_state);
+                                }
+                            }
+                            /* check if the key is calculated for debounce */
+                            KEY_RELEASED => {
+                                /* get the mapped key from the hashmap */
+                                if let Some(valid_key) =
+                                    layers.get(&key.row, &key.col, &layer_state)
+                                {
+                                    remove_keys(&mut ble_keyboard, valid_key, &mut layer_state);
+                                }
+                                /* if key has been debounced, add it to be removed */
+                                pressed_keys_to_remove
+                                    .push(*key)
+                                    .expect("Error adding a key to be removed!");
+                            }
+
+                            _ => { /* do nothing */ }
+                        }
+                    }
+
+                    #[cfg(feature = "debug")]
+                    /* debug log */
+                    log::info!(
+                        "ble_keyboard.key_report.keys: {:?}",
+                        ble_keyboard.key_report.keys
+                    );
+
+                    /* sent the new report */
+                    ble_keyboard.send_report();
+
+                    /* remove the sent keys and empty the vec */
+                    while let Some(key) = pressed_keys_to_remove.pop() {
+                        keys_pressed.remove(&key).unwrap();
+                    }
+                }
+            }
+            /* there must be a delay so the WDT in not triggered */
+            delay_ms(1).await;
+        } else {
+            #[cfg(feature = "debug")]
+            /* debug log */
+            log::info!("Keyboard not connected!");
+
+            /* check and store the ble status, then release the lock */
+            if let Some(mut ble_status) = ble_status.try_lock() {
+                *ble_status = BleStatus::NotConnected;
+            }
+
+            /* check the power save flag */
+            if !power_save_flag {
+                /* if false, set to true */
+                power_save_flag = true;
+            }
+
+            /* sleep for 100ms */
+            delay_ms(100).await;
         }
     }
 }
