@@ -14,7 +14,7 @@ use esp_idf_sys::{
 use heapless::FnvIndexMap;
 use spin::Mutex;
 
-#[cfg(feature = "interrupt-mode")]
+#[cfg(feature = "async-scan")]
 use embassy_futures::select::{select, Either};
 
 #[derive(Eq, Hash, PartialEq, Clone, Copy, Debug)]
@@ -38,48 +38,62 @@ impl PinMatrix<'_> {
     pub fn new() -> PinMatrix<'static> {
         let peripherals = Peripherals::take().expect("Not able to init peripherals.");
 
+        let rows = [
+            PinDriver::output(peripherals.pins.gpio0.downgrade())
+                .expect("Not able to set port as output."),
+            PinDriver::output(peripherals.pins.gpio1.downgrade())
+                .expect("Not able to set port as output."),
+            PinDriver::output(peripherals.pins.gpio2.downgrade())
+                .expect("Not able to set port as output."),
+            PinDriver::output(peripherals.pins.gpio3.downgrade())
+                .expect("Not able to set port as output."),
+        ];
+
+        let mut cols = [
+            PinDriver::input(peripherals.pins.gpio21.downgrade())
+                .expect("Not able to set port as input."),
+            PinDriver::input(peripherals.pins.gpio20.downgrade())
+                .expect("Not able to set port as input."),
+            PinDriver::input(peripherals.pins.gpio10.downgrade())
+                .expect("Not able to set port as input."),
+            PinDriver::input(peripherals.pins.gpio7.downgrade())
+                .expect("Not able to set port as input."),
+            PinDriver::input(peripherals.pins.gpio6.downgrade())
+                .expect("Not able to set port as input."),
+            PinDriver::input(peripherals.pins.gpio5.downgrade())
+                .expect("Not able to set port as input."),
+        ];
+
+        /* set input ports to proper pull and interrupt type */
+
+        for col in cols.iter_mut() {
+            col.set_pull(Pull::Down).ok();
+            col.set_interrupt_type(InterruptType::AnyEdge).ok();
+        }
+
         PinMatrix {
-            rows: [
-                PinDriver::output(peripherals.pins.gpio0.downgrade())
-                    .expect("Not able to set port as output."),
-                PinDriver::output(peripherals.pins.gpio1.downgrade())
-                    .expect("Not able to set port as output."),
-                PinDriver::output(peripherals.pins.gpio2.downgrade())
-                    .expect("Not able to set port as output."),
-                PinDriver::output(peripherals.pins.gpio3.downgrade())
-                    .expect("Not able to set port as output."),
-            ],
-            cols: [
-                PinDriver::input(peripherals.pins.gpio21.downgrade())
-                    .expect("Not able to set port as input."),
-                PinDriver::input(peripherals.pins.gpio20.downgrade())
-                    .expect("Not able to set port as input."),
-                PinDriver::input(peripherals.pins.gpio10.downgrade())
-                    .expect("Not able to set port as input."),
-                PinDriver::input(peripherals.pins.gpio7.downgrade())
-                    .expect("Not able to set port as input."),
-                PinDriver::input(peripherals.pins.gpio6.downgrade())
-                    .expect("Not able to set port as input."),
-                PinDriver::input(peripherals.pins.gpio5.downgrade())
-                    .expect("Not able to set port as input."),
-            ],
+            rows,
+            cols,
             enter_sleep_delay: Instant::now() + SLEEP_DELAY_INIT,
         }
     }
 
-    fn set_col_pull_interrupt_any_edge(&mut self) {
-        for col in self.cols.iter_mut() {
-            col.set_pull(Pull::Down).ok();
-            col.set_interrupt_type(InterruptType::AnyEdge).ok();
+    /// This function checks if the conditions for entering sleep mode are met
+    fn sleep_mode_if_conditions_met(&mut self) {
+        /* in case sleep is due */
+        if Instant::now() >= self.enter_sleep_delay {
+            self.enter_light_sleep_mode();
         }
     }
 
-    fn set_col_enable_interrupts(&mut self) {
+    /// Enables interrupt on pins for wakeup
+    fn set_col_enable_sleep_interrupts(&mut self) {
         for col in self.cols.iter_mut() {
             col.enable_interrupt().ok();
         }
     }
 
+    /// Only used for setting gpios to listen for interrup, so the processor is woken
     fn set_light_sleep_gpio_wakeup_enable(&mut self) {
         unsafe {
             /* set gpios that can wake up the chip */
@@ -102,15 +116,18 @@ impl PinMatrix<'_> {
         }
     }
 
+    /// Enter light sleep mode
+    /// This function sets the home row to high,
+    /// and sets the configured gpio to listen for interrupt (key press) in order to wake up the processor
     fn enter_light_sleep_mode(&mut self) {
         /* enable interrupts */
-        self.set_col_enable_interrupts();
-
-        /* set the home row to high */
-        self.rows[1].set_high().unwrap();
+        self.set_col_enable_sleep_interrupts();
 
         /* set gpio wakeup enable interrup */
         self.set_light_sleep_gpio_wakeup_enable();
+
+        /* set the home row to high */
+        self.rows[1].set_high().unwrap();
 
         /* enter sleep mode */
         unsafe {
@@ -135,7 +152,9 @@ impl PinMatrix<'_> {
         }
     }
 
-    #[cfg(not(feature = "interrupt-mode"))]
+    /// This is the standard scan mode
+    /// Each row is set to high, then each col is checked if it is high or not
+    #[cfg(not(feature = "async-scan"))]
     async fn standard_scan(
         &mut self,
         keys_pressed: &Mutex<FnvIndexMap<Key, Debounce, PRESSED_KEYS_INDEXMAP_SIZE>>,
@@ -180,8 +199,10 @@ impl PinMatrix<'_> {
         count.row = 0;
     }
 
-    #[cfg(feature = "interrupt-mode")]
-    async fn interrupt_scan(
+    /// This is an experimental async way of detecting if a key is pressed
+    /// Currently, does not work properly
+    #[cfg(feature = "async-scan")]
+    async fn async_scan(
         &mut self,
         keys_pressed: &Mutex<FnvIndexMap<Key, Debounce, PRESSED_KEYS_INDEXMAP_SIZE>>,
     ) {
@@ -220,6 +241,7 @@ impl PinMatrix<'_> {
     }
 }
 
+/// The main function for stornig the registered key in to the shared pressed keys hashmap
 fn store_key(
     keys_pressed: &Mutex<FnvIndexMap<Key, Debounce, PRESSED_KEYS_INDEXMAP_SIZE>>,
     key: &Key,
@@ -253,6 +275,8 @@ fn store_key(
         None
     }
 }
+
+/// The main matrix scan function
 pub async fn scan_grid(
     keys_pressed: &Mutex<FnvIndexMap<Key, Debounce, PRESSED_KEYS_INDEXMAP_SIZE>>,
     ble_status: &Mutex<BleStatus>,
@@ -260,17 +284,12 @@ pub async fn scan_grid(
     /* construct the matrix */
     let mut matrix = PinMatrix::new();
 
-    /* initialize interrupt */
-    matrix.set_col_pull_interrupt_any_edge();
-
     /* local ble status variable */
     let mut ble_status_local: BleStatus = BleStatus::NotConnected;
 
     loop {
-        /* in case sleep is due */
-        if Instant::now() >= matrix.enter_sleep_delay {
-            matrix.enter_light_sleep_mode();
-        }
+        /* check if sleep conditions are met */
+        matrix.sleep_mode_if_conditions_met();
 
         /* check and store the ble status, then release the lock */
         if let Some(ble_status) = ble_status.try_lock() {
@@ -280,11 +299,11 @@ pub async fn scan_grid(
         /* if a connection is established, run the key matrix */
         match ble_status_local {
             BleStatus::Connected => {
-                #[cfg(not(feature = "interrupt-mode"))]
+                #[cfg(not(feature = "async-scan"))]
                 matrix.standard_scan(keys_pressed).await;
 
-                #[cfg(feature = "interrupt-mode")]
-                matrix.interrupt_scan(keys_pressed).await;
+                #[cfg(feature = "async-scan")]
+                matrix.async_scan(keys_pressed).await;
             }
             BleStatus::NotConnected => {
                 /* wait till there is a connection */
