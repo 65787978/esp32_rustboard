@@ -153,7 +153,7 @@ pub fn layout() -> Layers {
             .upper
             .insert((2, 4), HidKeys::MacroClosedBracket)
             .unwrap(); // )
-        layout.upper.insert((2, 5), HidKeys::Undefined).unwrap(); // Undefined
+        layout.upper.insert((2, 5), HidKeys::Grave).unwrap(); // ` or ~ with SHIFT
 
         layout.upper.insert((3, 0), HidKeys::Tab).unwrap(); // TAB
         layout.upper.insert((3, 1), HidKeys::Enter).unwrap(); // ENTER
