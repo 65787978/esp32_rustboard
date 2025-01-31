@@ -140,7 +140,7 @@ pub fn layout() -> Layers {
         layout.upper.insert((1, 2), HidKeys::Down).unwrap(); // DOWN
         layout.upper.insert((1, 3), HidKeys::Up).unwrap(); // UP
         layout.upper.insert((1, 4), HidKeys::Right).unwrap(); // RIGHT
-        layout.upper.insert((1, 5), HidKeys::MacroStar).unwrap(); // *
+        layout.upper.insert((1, 5), HidKeys::MacroAsterix).unwrap(); // *
 
         layout.upper.insert((2, 0), HidKeys::Backslash).unwrap(); // \
         layout.upper.insert((2, 1), HidKeys::Lbracket).unwrap(); // [
