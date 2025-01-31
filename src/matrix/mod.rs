@@ -74,7 +74,7 @@ impl PinMatrix<'_> {
         PinMatrix {
             rows,
             cols,
-            enter_sleep_delay: Instant::now() + SLEEP_DELAY_INIT,
+            enter_sleep_delay: Instant::now() + SLEEP_DELAY_NOT_CONNECTED,
         }
     }
 
@@ -309,6 +309,8 @@ pub async fn scan_grid(
                 /* wait till there is a connection */
                 /* sleep for 100ms */
                 delay_ms(100).await;
+
+                matrix.enter_sleep_delay = Instant::now() + SLEEP_DELAY_NOT_CONNECTED;
             }
         }
     }
