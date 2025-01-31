@@ -380,7 +380,7 @@ pub async fn ble_send_keys(
                 }
             }
             /* there must be a delay so the WDT in not triggered */
-            delay_ms(1).await;
+            delay_ms(5).await;
         } else {
             #[cfg(feature = "debug")]
             /* debug log */
